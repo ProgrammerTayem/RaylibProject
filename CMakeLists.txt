@@ -22,6 +22,8 @@ set(RAYLIB_DIR "C:/raylib/raylib/src")
 set(SOURCES
     src/main.cpp
     src/startupScene.cpp
+    src/menuScene.cpp
+    src/gameScene.cpp
 )
 
 # =========================
@@ -38,6 +40,7 @@ target_include_directories(RaylibProject PRIVATE
     include
     ${RAYLIB_DIR}
     ${CMAKE_SOURCE_DIR}/externals/raygui
+    ${CMAKE_SOURCE_DIR}/externals/raygui/styles
 )
 
 # =========================
@@ -84,7 +87,7 @@ if(WIN32)
 endif()
 
 # =========================
-# SANITIZERS (optional)
+# SANITIZERS
 # =========================
 
 option(ENABLE_SANITIZERS "Enable Address/UB Sanitizers" OFF)
@@ -100,7 +103,7 @@ if(ENABLE_SANITIZERS)
 endif()
 
 # =========================
-# ASSETS COPY (IMPORTANT FOR GAMES)
+# ASSETS COPY
 # =========================
 
 add_custom_command(TARGET RaylibProject POST_BUILD

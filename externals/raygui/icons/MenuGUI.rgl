@@ -1,0 +1,33 @@
+#
+# rgl layout text file (v4.0) - raygui layout file generated using rGuiLayout
+#
+# Number of controls:     21
+#
+# Ref. window:    r <x> <y> <width> <height>
+# Anchor info:    a <id> <name> <posx> <posy> <enabled>
+# Control info:   c <id> <type> <name> <rectangle> <anchor_id> <text>
+#
+r 0 40 -1 -1
+a 001 anchor01 824 280 1
+a 002 anchor02 536 200 1
+c 000 5 Button_PLAY 248 360 232 64 0 PLAY
+c 001 5 Button_EXIT 248 560 232 64 0 EXIT
+c 002 0 WindowBoxCNFRM 0 0 456 232 1 CONFIRM
+c 003 5 ButtonYES 40 144 144 48 1 YES
+c 004 5 ButtonNO 272 144 152 48 1 NO
+c 005 6 LabelButton006 992 352 200 40 0 SURE TO EXIT?
+c 006 5 Button006 -288 256 232 64 2 PLAY
+c 007 1 GroupBox010 0 0 936 520 2 
+c 008 17 SliderBar011 224 104 536 24 2 MASTER VOLUME
+c 009 5 Button011 0 -32 312 32 2 SAMPLE TEXT
+c 010 5 Button011 312 -32 312 32 2 SAMPLE TEXT
+c 011 5 Button011 624 -32 312 32 2 SAMPLE TEXT
+c 012 17 SliderBar012 224 152 536 24 2 MUSIC
+c 013 17 SliderBar013 224 200 536 24 2 SFX
+c 014 7 CheckBoxEx014 648 304 24 24 0 USE VSYNC
+c 015 4 Label015 648 344 216 32 0 TARGET FRAME RATE
+c 016 11 DropdownBox016 864 344 160 32 0 120 FPS;60 FPS;30 FPS
+c 017 6 LabelButton017 648 392 216 32 0 ANTI-ALIASING
+c 018 11 DropdownBox018 864 392 160 32 0 TAA;MSAA;FXAA
+c 019 4 Label019 648 304 168 32 0 CURSOR VISIBILITY
+c 020 9 ToggleGroup020 824 304 64 32 0 TOGGLE;HOLD

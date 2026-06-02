@@ -447,7 +447,7 @@
 typedef struct GuiStyleProp {
     unsigned short controlId;   // Control identifier
     unsigned short propertyId;  // Property identifier
-    int propertyValue;          // Property value
+    unsigned int propertyValue;          // Property value
 } GuiStyleProp;
 
 /*

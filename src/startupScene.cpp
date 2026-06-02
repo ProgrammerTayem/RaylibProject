@@ -1,4 +1,5 @@
 #include "startupScene.h"
+#include "menuScene.h"
 #include "raylib.h"
 
 StartupScene::StartupScene() : timer(0.0f), state(IN) {}
@@ -16,18 +17,21 @@ Scene* StartupScene::Update(float dt){
             break;
 
         case OUT:
-            if(timer > 2.0f) return nullptr;
+            if(timer > 2.0f) return new MenuScene();
             break;
 
         default:
             break;
     }
 
+    if(IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) return new MenuScene();
+
     return this;
 }
 
 void StartupScene::Draw()
 {
+    ClearBackground(BLACK);
     float alpha = 1.0f;
 
     if(state == IN) alpha = timer / 2.0f;
