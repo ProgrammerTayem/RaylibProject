@@ -1,0 +1,46 @@
+{
+    "misc" : [
+        {
+            "name": "Coins",
+            "id": "coins_heap",
+            "icon_id": "coins_heap",
+            "desc": "THE MAIN CURRENCY IN THIS VILLAGE. THE MORE COINS YOU HAVE, THE BETTER!"
+        },
+        {
+            "name": "Coins",
+            "id": "coins_tower",
+            "icon_id": "coins_tower",
+            "desc": "THE MAIN CURRENCY IN THIS VILLAGE. THE MORE COINS YOU HAVE, THE BETTER!"
+        },
+        {
+            "name": "Coins",
+            "id": "coins_small",
+            "icon_id": "coins_small",
+            "desc": "THE MAIN CURRENCY IN THIS VILLAGE. THE MORE COINS YOU HAVE, THE BETTER!"
+        },
+        {
+            "name": "Coins",
+            "id": "coins_single",
+            "icon_id": "coins_single",
+            "desc": "THE MAIN CURRENCY IN THIS VILLAGE. THE MORE COINS YOU HAVE, THE BETTER!"
+        },
+        {
+            "name": "Coins",
+            "id": "coins_pile",
+            "icon_id": "coins_pile",
+            "desc": "THE MAIN CURRENCY IN THIS VILLAGE. THE MORE COINS YOU HAVE, THE BETTER!"
+        },
+        {
+            "name": "Crystal",
+            "id": "crystal",
+            "icon_id": "crystal",
+            "desc": "THESE RARE GEMSTONES ARE WORTH QUITE A LOT"
+        },
+        {
+            "name": "Exp",
+            "id": "exp",
+            "icon_id": "exp",
+            "desc": ""
+        }
+    ]
+}

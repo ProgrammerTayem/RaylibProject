@@ -1,0 +1,43 @@
+{
+    "name": "ALICE",
+
+    "stats": {
+        "ATK": 250,
+        "HP": 1000,
+        "DEF": 0.12,
+        "CRIT_RATE": 0.1,
+        "CRIT_DMG": 1.2
+    },
+
+    "portrait_id": "shadow_idle_right",
+    
+    "skills": [
+        {
+            "type": "BASIC",
+            "title": "BLAZING EDGE",
+            "desc": "DEALS DAMAGE EQUAL TO 100% OF ATK TO THE SELECTED ENEMY",
+            "icon_id": "shadow1"
+        },
+
+        {
+            "type": "UNIQUE",
+            "title": "INFERNO ACCUMULATION",
+            "desc": "GRANTS 10% ATK BOOST AND 20% CRIT RATE BOOST TO SELF",
+            "icon_id": "shadow2"
+        },
+
+        {
+            "type": "ENHANCED",
+            "title": "FOLLOW UP",
+            "desc": "GRANTS 2 STACKS OF COUNTER-ATTACK TO SELF (-1 STACK AFTER EACH TRIGGER)",
+            "icon_id": "shadow3"
+        },
+
+        {
+            "type": "ULTIMATE",
+            "title": "HELL'S PARADISE",
+            "desc": "DEALS DAMAGE EQUAL TO 190% OF ATK TO THE SELECTED ENEMY, AND 70% OF ATK TO THE NEARBY ENEMIES",
+            "icon_id": "shadow4"
+        }
+    ]
+}

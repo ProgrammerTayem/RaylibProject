@@ -2,6 +2,7 @@
 #include "Scene.h"
 #include "StartupScene.h"
 #include "MenuScene.h"
+#include "gameData.h"
 #define RAYGUI_IMPLEMENTATION
 #include "raygui.h"
 #include "lavanda/style_lavanda.h"
@@ -9,9 +10,11 @@
 
 int main()
 {
-    InitWindow(800, 450, "Raylib Project");
+    InitWindow(1900, 1000, "Raylib Project");
+    InitAudioDevice();
+    gameData.LoadAll();
     GuiLoadStyleLavanda();
-    ToggleBorderlessWindowed();
+    //ToggleBorderlessWindowed();
     Scene* scene = new StartupScene();
 
     while(!WindowShouldClose())
@@ -35,6 +38,7 @@ int main()
     }
 
     delete scene;
+    CloseAudioDevice();
     CloseWindow();
 
     return 0;

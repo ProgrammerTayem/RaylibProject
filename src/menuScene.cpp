@@ -1,32 +1,98 @@
 #include "menuScene.h"
 #include "gameScene.h"
+#include "gameData.h"
 #include "raylib.h"
 #include "raygui.h"
 
+ParallaxBackground::ParallaxBackground(){
+    scrollAmount.resize(layerCount);
+    std::fill(scrollAmount.begin(), scrollAmount.end(), 0.0f);
+    for(int i = 0; i < layerCount; i++){
+        layers.push_back(gameData.res.GetTexture("city_bg_" + std::to_string(i + 1)));
+    }
+}
+
+void ParallaxBackground::ParallaxUpdate(float dt){
+    for(int i = 0; i < layerCount; i++){
+        scrollAmount[i] -= layerSpeeds[i] * scrollVel * dt;
+        if(layers[i] && scrollAmount[i] <= -layers[i]->width) scrollAmount[i] = 0;
+    }
+}
+
+void ParallaxBackground::Draw() const{
+    for(int i = 0; i < layerCount; i++){
+        if(!layers[i]) continue;
+        Rectangle src = {
+            .x = scrollAmount[i],
+            .y = 0,
+            .width = layers[i]->width * 2.5f,
+            .height = layers[i]->height
+        };
+        Rectangle dst = {
+            .x = 0,
+            .y = 0,
+            .width = (float)GetScreenWidth(),
+            .height = (float)GetScreenHeight()
+        };
+        DrawTexturePro(*layers[i], src, dst, (Vector2) {0.0f, 0.0f}, 0.0f, WHITE);
+    }
+}
+
+int MenuScene::GuiSoundedButton(const Rectangle& bounds, const char* text){
+    int result = GuiButton(bounds, text);
+    if(result && buttonClickSound){
+        PlaySound(*buttonClickSound);
+    }
+    return result;
+}
 
 MenuScene::MenuScene() : showOptions(false), opt(1), vsyncCheckboxValue(false), fpsValue(1), antiAliasingValue(0), cursorVisibilityValue(0), fpsDropdownEdit(false), antiAliasingDropdownEdit(false), fadeoutActive(false) {
-    buttonPressed.resize(buttons::CONTROLS_GRP + 1, false);
-    windowBoxActive.resize(windowBox::CNFRM + 1, false);
+    buttonPressed.resize(buttons::SAVE + 1, false);
+    windowBoxActive.resize(windowBox::CNFRM_EXIT + 1, false);
     SliderBarValue.resize(sliderBar::SFX + 1, 0.0f);
+    SliderBarValue = {100.0f, 75.0f, 75.0f};
     timer = 0.0f;
+    buttonClickSound = gameData.res.GetSfx("button_click");
+    menuMusic = gameData.res.GetMusic("menu_music");
+    if(menuMusic) PlayMusicStream(*menuMusic);
+    menuMusic->looping = true;
 }
 
 Scene* MenuScene::Update(float dt){
-    if(buttonPressed[buttons::PLAY]) fadeoutActive = true;
+    background.ParallaxUpdate(dt);
+    if(menuMusic) UpdateMusicStream(*menuMusic);
+    float masterVol = SliderBarValue[sliderBar::MASTER_VOL] / 100.0f, 
+          musicVol = SliderBarValue[sliderBar::VOL] / 100.0f, 
+          sfxVol = SliderBarValue[sliderBar::SFX] / 100.0f;
+
+    if(menuMusic) SetMusicVolume(*menuMusic, masterVol * musicVol);
+    if(buttonClickSound) SetSoundVolume(*buttonClickSound, masterVol * sfxVol);
+    if(buttonPressed[buttons::CONTINUE] || buttonPressed[buttons::NEW_YES]) fadeoutActive = true;
     if(fadeoutActive){
         timer += dt;
         if(timer > 2.0f) return new GameScene();
     }
-    if(windowBoxActive[windowBox::CNFRM]){
-        if(buttonPressed[buttons::YES]){
+    if(windowBoxActive[windowBox::CNFRM_EXIT]){
+        if(buttonPressed[buttons::EXIT_YES]){
             return nullptr;
         }
-        else if(buttonPressed[buttons::NO]){
-            windowBoxActive[windowBox::CNFRM] = false;
+        else if(buttonPressed[buttons::EXIT_NO]){
+            windowBoxActive[windowBox::CNFRM_EXIT] = false;
         }
     }
+    if(windowBoxActive[windowBox::CNFRM_NEW_GAME]){
+        if(buttonPressed[buttons::NEW_NO]){
+            windowBoxActive[windowBox::CNFRM_NEW_GAME] = false;
+        }
+    }
+    if(buttonPressed[buttons::BACK]){
+        showOptions = false;
+        opt = 1;
+    }
     if(buttonPressed[buttons::OPTIONS]){
-        showOptions = !showOptions;
+        showOptions = true;
+        windowBoxActive[windowBox::CNFRM_EXIT] = false;
+        windowBoxActive[windowBox::CNFRM_NEW_GAME] = false;
     }
     if(buttonPressed[buttons::VOLUME_GRP]) opt = 1;
     else if(buttonPressed[buttons::GRAPHICS_GRP]) opt = 2;
@@ -35,21 +101,31 @@ Scene* MenuScene::Update(float dt){
 }
 
 void MenuScene::Draw(){
+    //ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
+    background.Draw();
     if(fadeoutActive) GuiLock();
-    ClearBackground(GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));
     //ClearBackground(WHITE);
     GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 24);
-    char windowLabelText[128] = "SURE TO EXIT?";
-    buttonPressed[buttons::PLAY] = GuiButton((Rectangle){ 248, 360, 232, 64 }, "PLAY");
-    buttonPressed[buttons::OPTIONS] = GuiButton((Rectangle){ 248, 456, 232, 64 }, "OPTIONS"); 
-    buttonPressed[buttons::EXIT] = GuiButton((Rectangle){ 248, 560, 232, 64 }, "EXIT"); 
-    if (windowBoxActive[windowBox::CNFRM] || buttonPressed[buttons::EXIT]) {
+    buttonPressed[buttons::CONTINUE] = GuiSoundedButton((Rectangle){ 248, 360, 232, 64 }, "CONTINUE");
+    buttonPressed[buttons::NEW_GAME] = GuiSoundedButton((Rectangle){ 248, 456, 232, 64 }, "NEW GAME");
+    buttonPressed[buttons::OPTIONS] = GuiSoundedButton((Rectangle){ 248, 560, 232, 64 }, "OPTIONS"); 
+    buttonPressed[buttons::EXIT] = GuiSoundedButton((Rectangle){ 248, 656, 232, 64 }, "EXIT"); 
+    if ((windowBoxActive[windowBox::CNFRM_EXIT] || buttonPressed[buttons::EXIT]) && !showOptions) {
         //DrawRectangle(824, 280, 456, 232, RED);
-        windowBoxActive[windowBox::CNFRM] = !GuiWindowBox((Rectangle){ 824, 280, 456, 232 }, "CONFIRM");
+        char windowLabelText[128] = "SURE TO EXIT?";
+        windowBoxActive[windowBox::CNFRM_EXIT] = !GuiWindowBox((Rectangle){ 824, 280, 456, 232 }, "CONFIRM");
         GuiLabel((Rectangle){ 970, 340, 156, 60 }, windowLabelText);
-        buttonPressed[buttons::YES] = GuiButton((Rectangle){ 864, 424, 144, 48 }, "YES");
-        buttonPressed[buttons::NO] = GuiButton((Rectangle){ 1096, 424, 152, 48 }, "NO"); 
+        buttonPressed[buttons::EXIT_YES] = GuiSoundedButton((Rectangle){ 864, 424, 144, 48 }, "YES");
+        buttonPressed[buttons::EXIT_NO] = GuiSoundedButton((Rectangle){ 1096, 424, 152, 48 }, "NO"); 
+    }
+    if ((windowBoxActive[windowBox::CNFRM_NEW_GAME] || buttonPressed[buttons::NEW_GAME]) && !showOptions) {
+        //DrawRectangle(824, 280, 456, 232, RED);
+        char windowLabelText[128] = "THIS WILL OVERWRITE YOUR PREVIOUS SAVE\nPROCEED?";
+        windowBoxActive[windowBox::CNFRM_NEW_GAME] = !GuiWindowBox((Rectangle){ 824, 280, 456, 232 }, "CONFIRM");
+        GuiLabel((Rectangle){ 860, 340, 390, 60 }, windowLabelText);
+        buttonPressed[buttons::NEW_YES] = GuiSoundedButton((Rectangle){ 864, 424, 144, 48 }, "YES");
+        buttonPressed[buttons::NEW_NO] = GuiSoundedButton((Rectangle){ 1096, 424, 152, 48 }, "NO"); 
     }
     else if(showOptions){
         GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
@@ -62,10 +138,10 @@ void MenuScene::Draw(){
             //GuiLine((Rectangle){ 536, 398, 936, 2 }, nullptr);
             GuiSliderBar((Rectangle){ 760, 416, 536, 24 }, "SFX", NULL, &SliderBarValue[sliderBar::SFX], 0, 100);
             GuiLock();
-            buttonPressed[buttons::VOLUME_GRP] = GuiButton((Rectangle){ 536, 168, 312, 32 }, "VOLUME");
+            buttonPressed[buttons::VOLUME_GRP] = GuiSoundedButton((Rectangle){ 536, 168, 312, 32 }, "VOLUME");
             GuiUnlock();
-            buttonPressed[buttons::GRAPHICS_GRP] = GuiButton((Rectangle){ 848, 168, 312, 32 }, "GRAPHICS");
-            buttonPressed[buttons::CONTROLS_GRP] = GuiButton((Rectangle){ 1160, 168, 312, 32 }, "CONTROLS");
+            buttonPressed[buttons::GRAPHICS_GRP] = GuiSoundedButton((Rectangle){ 848, 168, 312, 32 }, "GRAPHICS");
+            buttonPressed[buttons::CONTROLS_GRP] = GuiSoundedButton((Rectangle){ 1160, 168, 312, 32 }, "CONTROLS");
         }
         if(opt == 2){
             GuiCheckBox((Rectangle){ 760, 304, 24, 24 }, "USE VSYNC", &vsyncCheckboxValue);
@@ -80,21 +156,28 @@ void MenuScene::Draw(){
             GuiLabel((Rectangle){ 715, 495, 216, 32 }, "ANTI-ALIASING");
             if(GuiDropdownBox((Rectangle) { 914, 495, 160, 32, }, "NONE; MSAA; FXAA", &antiAliasingValue, antiAliasingDropdownEdit)) antiAliasingDropdownEdit = !antiAliasingDropdownEdit;
             
-            buttonPressed[buttons::VOLUME_GRP] = GuiButton((Rectangle){ 536, 168, 312, 32 }, "VOLUME");
+            buttonPressed[buttons::VOLUME_GRP] = GuiSoundedButton((Rectangle){ 536, 168, 312, 32 }, "VOLUME");
             GuiLock();
-            buttonPressed[buttons::GRAPHICS_GRP] = GuiButton((Rectangle){ 848, 168, 312, 32 }, "GRAPHICS");
+            buttonPressed[buttons::GRAPHICS_GRP] = GuiSoundedButton((Rectangle){ 848, 168, 312, 32 }, "GRAPHICS");
             GuiUnlock();
-            buttonPressed[buttons::CONTROLS_GRP] = GuiButton((Rectangle){ 1160, 168, 312, 32 }, "CONTROLS");
+            buttonPressed[buttons::CONTROLS_GRP] = GuiSoundedButton((Rectangle){ 1160, 168, 312, 32 }, "CONTROLS");
         }
         if(opt == 3){
                 GuiLabel((Rectangle){ 648, 304, 168, 32 }, "CURSOR VISIBILITY");
                 GuiToggleGroup((Rectangle){ 824, 304, 128, 32 }, "ON TOGGLE;ON HOLD", &cursorVisibilityValue);
-                GuiButton((Rectangle) { 648, 360, 200, 32 }, "KEYBINDINGS");
-                buttonPressed[buttons::VOLUME_GRP] = GuiButton((Rectangle){ 536, 168, 312, 32 }, "VOLUME");
-                buttonPressed[buttons::GRAPHICS_GRP] = GuiButton((Rectangle){ 848, 168, 312, 32 }, "GRAPHICS");
+                GuiSoundedButton((Rectangle) { 648, 360, 200, 32 }, "KEYBINDINGS");
+                buttonPressed[buttons::VOLUME_GRP] = GuiSoundedButton((Rectangle){ 536, 168, 312, 32 }, "VOLUME");
+                buttonPressed[buttons::GRAPHICS_GRP] = GuiSoundedButton((Rectangle){ 848, 168, 312, 32 }, "GRAPHICS");
                 GuiLock();
-                buttonPressed[buttons::CONTROLS_GRP] = GuiButton((Rectangle){ 1160, 168, 312, 32 }, "CONTROLS");
+                buttonPressed[buttons::CONTROLS_GRP] = GuiSoundedButton((Rectangle){ 1160, 168, 312, 32 }, "CONTROLS");
                 GuiUnlock();
+        }
+        
+        buttonPressed[buttons::BACK] = GuiSoundedButton((Rectangle){ 1322, 721, 150, 55 }, "BACK");
+        GuiDrawIcon(ICON_ARROW_LEFT_FILL, 1330, 730, 2, WHITE);
+        if(opt == 2 || opt == 3){
+            buttonPressed[buttons::SAVE] = GuiSoundedButton((Rectangle){ 1172, 721, 150, 55}, "SAVE");
+            GuiDrawIcon(ICON_FILE_SAVE_CLASSIC, 1180, 730, 2, WHITE);
         }
     }
     if(fadeoutActive){

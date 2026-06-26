@@ -1,0 +1,37 @@
+{
+    "quests" : [
+        {
+            "title" : "TAKE THE JOURNEY",
+            "desc" : "COMPLETE THE NOVICE'S TRIAL TO BEGIN YOUR ADVENTURE",
+            "task": "KILL THE PHANTOM",
+            "id": "take_the_journey",
+            "rewards" : [
+                {
+                    "id": "coins_tower",
+                    "quantity": 1000
+                },
+                {
+                    "id": "crystal",
+                    "quantity": 30
+                },
+                {
+                    "id": "exp",
+                    "quantity": 60
+                }
+            ],
+            "unlock_conditions" : [
+                {
+                    "type": "talk_to_npc",
+                    "target": "Bob"
+                }
+            ],
+            "end_conditions" : [
+                {
+                    "type": "kill",
+                    "target": "Phantom",
+                    "count": 3
+                }
+            ]
+        }
+    ]
+}

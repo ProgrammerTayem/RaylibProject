@@ -24,6 +24,7 @@ set(SOURCES
     src/startupScene.cpp
     src/menuScene.cpp
     src/gameScene.cpp
+    src/Loader.cpp
 )
 
 # =========================
@@ -39,6 +40,7 @@ add_executable(RaylibProject ${SOURCES})
 target_include_directories(RaylibProject PRIVATE
     include
     ${RAYLIB_DIR}
+    ${CMAKE_SOURCE_DIR}/externals
     ${CMAKE_SOURCE_DIR}/externals/raygui
     ${CMAKE_SOURCE_DIR}/externals/raygui/styles
 )

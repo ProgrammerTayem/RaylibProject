@@ -1,0 +1,186 @@
+{
+    "textures" : [
+        {
+            "path" : "assets/icon/gui_icon/atk.png",
+            "id" : "atk_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/def.png",
+            "id" : "def_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/hp.png",
+            "id" : "hp_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/crit_rate.png",
+            "id" : "crit_rate_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/crit_dmg.png",
+            "id" : "crit_dmg_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/char_icon.png",
+            "id" : "char_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/inventory_icon.png",
+            "id" : "inventory_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/inventory.png",
+            "id" : "inventory_panel_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/quests_icon.png",
+            "id" : "quests_icon"
+        },
+        {
+            "path" : "assets/icon/gui_icon/tasks_icon.png",
+            "id" : "tasks_icon"
+        },
+        {
+            "path" : "assets/icon/skill_icon/shadow/basic.png",
+            "id" : "shadow1"
+        },
+        {
+            "path" : "assets/icon/skill_icon/shadow/unique.png",
+            "id" : "shadow2"
+        },
+        {
+            "path" : "assets/icon/skill_icon/shadow/enhanced.png",
+            "id" : "shadow3"
+        },
+        {
+            "path" : "assets/icon/skill_icon/shadow/ultimate.png",
+            "id" : "shadow4"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_idle_down_anim_strip_6.png",
+            "id" : "shadow_idle_down"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_idle_left_anim_strip_6.png",
+            "id" : "shadow_idle_left"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_idle_right_anim_strip_6.png",
+            "id" : "shadow_idle_right"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_idle_up_anim_strip_6.png",
+            "id" : "shadow_idle_up"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_run_down_anim_strip_6.png",
+            "id" : "shadow_run_down"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_run_left_anim_strip_6.png",
+            "id" : "shadow_run_left"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_run_right_anim_strip_6.png",
+            "id" : "shadow_run_right"
+        },
+        {
+            "path" : "assets/sprites/shadow/shadow_run_up_anim_strip_6.png",
+            "id" : "shadow_run_up"
+        },
+        {
+            "path" : "assets/sprites/phantom/phantom_idle_anim_left_strip_4.png",
+            "id" : "phantom_idle"
+        },
+        {
+            "path" : "assets/tilesets/Overworld_Tileset.png",
+            "id" : "overworld_tileset"
+        },
+        {
+            "path" : "assets/background/City/1.png",
+            "id" : "city_bg_1"
+        },
+        {
+            "path" : "assets/background/City/2.png",
+            "id" : "city_bg_2"
+        },
+        {
+            "path" : "assets/background/City/3.png",
+            "id" : "city_bg_3"
+        },
+        {
+            "path" : "assets/background/City/4.png",
+            "id" : "city_bg_4"
+        },
+        {
+            "path" : "assets/background/City/5.png",
+            "id" : "city_bg_5"
+        },
+        {
+            "path" : "assets/background/City/6.png",
+            "id" : "city_bg_6"
+        }, 
+        {
+            "path" : "assets/icon/gui_icon/exp.png",
+            "id" : "exp"
+        },
+        {
+            "path" : "assets/icon/item_icons/coins/coin_01d.png",
+            "id" : "coins_single"
+        },
+        {
+            "path" : "assets/icon/item_icons/coins/coin_02d.png",
+            "id" : "coins_small"
+        },
+        {
+            "path" : "assets/icon/item_icons/coins/coin_03d.png",
+            "id" : "coins_tower"
+        },
+        {
+            "path" : "assets/icon/item_icons/coins/coin_04d.png",
+            "id" : "coins_pile"
+        },
+        {
+            "path" : "assets/icon/item_icons/coins/coin_05d.png",
+            "id" : "coins_heap"
+        },
+        {
+            "path" : "assets/icon/item_icons/gem_01d.png",
+            "id" : "crystal"
+        },
+        {
+            "path" : "assets/icon/gui_icon/new_quest.png",
+            "id" : "new_quest"
+        }
+    ],
+
+    "musics" : [
+        {
+            "path" : "assets/music/menuMusic.wav",
+            "id": "menu_music"
+        },
+        {
+            "path" : "assets/music/gameBackground.mp3",
+            "id": "game_background_music"
+        }
+    ],
+    
+    "sfxs" : [
+        {
+            "path": "assets/SFX/buttonClick.wav",
+            "id": "button_click"
+        },
+        {
+            "path": "assets/SFX/questComplete.mp3",
+            "id": "quest_complete"
+        },
+        {
+            "path": "assets/SFX/rewardCollected.mp3",
+            "id": "reward_collect"
+        },
+        {
+            "path": "assets/SFX/newQuest.mp3",
+            "id": "quest_new"
+        }
+    ]
+}
