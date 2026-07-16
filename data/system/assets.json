@@ -49,7 +49,7 @@
             "id" : "shadow2"
         },
         {
-            "path" : "assets/icon/skill_icon/shadow/enhanced.png",
+            "path" : "assets/icon/skill_icon/shadow/passive.png",
             "id" : "shadow3"
         },
         {
@@ -95,6 +95,34 @@
         {
             "path" : "assets/tilesets/Overworld_Tileset.png",
             "id" : "overworld_tileset"
+        },
+        {
+            "path" : "assets/tilesets/Topdown RPG 32x32 - Bushes 1.1.PNG",
+            "id" : "bushes_tileset"
+        },
+        {
+            "path" : "assets/tilesets/Topdown RPG 32x32 - Ground Tileset 1.2.PNG",
+            "id" : "ground_tileset"
+        },
+        {
+            "path" : "assets/tilesets/Topdown RPG 32x32 - Rocks 1.2.PNG",
+            "id" : "rocks_tileset"
+        },
+        {
+            "path" : "assets/tilesets/Topdown RPG 32x32 - Ruins.PNG",
+            "id" : "ruins_tileset"
+        },
+        {
+            "path" : "assets/tilesets/Topdown RPG 32x32 - Tree Stumps and Logs 1.2.PNG",
+            "id" : "tree_stumps_logs_tileset"
+        },
+        {
+            "path" : "assets/tilesets/Topdown RPG 32x32 - Trees 1.2.PNG",
+            "id" : "trees_tileset"
+        },
+        {
+            "path" : "assets/tilesets/Topdown RPG 32x32 - WaterTileset.PNG",
+            "id" : "water_tileset"
         },
         {
             "path" : "assets/background/City/1.png",

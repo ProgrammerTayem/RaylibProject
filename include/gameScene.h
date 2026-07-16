@@ -11,7 +11,7 @@
 #define TILE_SIZE 32
 #define TILESET_TILE_SIZE 16
 
-class World; 
+class World;
 
 class Player{
 
@@ -21,6 +21,8 @@ class Player{
         void Update(float dt, World& world);
         void Draw() const;
         Vector2 GetPosition() const { return position; }
+        int GetElevation() const { return elevation; }
+        void SetPosition(Vector2 pos) { position = pos; }
 
     private:
         enum AnimList {RUN_LEFT, RUN_UP, RUN_RIGHT, RUN_DOWN, IDLE_LEFT, IDLE_UP, IDLE_RIGHT, IDLE_DOWN};
@@ -28,6 +30,7 @@ class Player{
         std::vector<Animation> animations;
         std::vector<Texture2D*> sprites;
         int curAnimation, spriteFrame;
+        int elevation = 1;
         float speed;
         Vector2 position;
 };
@@ -48,8 +51,6 @@ class InteractiveEntity : public Entity {
     public:
         virtual ~InteractiveEntity() = default;
         int HandleInteraction(Vector2 playerPos, float dt);
-        bool DialogueActive() const { return dialogueActive; }
-        int DialogueIndex() const { return dialogueIndex; }
 
     protected:
 
@@ -72,7 +73,8 @@ class Enemy : public InteractiveEntity {
 
     public:
         explicit Enemy(Resources &res);
-        Enemy(Resources &res, const Vector2 position, const std::string &name);
+        Enemy(Resources &res, const Vector2 position, const std::string &name,
+              const std::vector<std::string>& dialogueLines = {}, std::array<Character*, 3> inBattleCharacters = {}, const std::string textureId = "enemy");
         ~Enemy() = default;
         void Update(float dt, Player& player) override;
         void Draw() const override;
@@ -83,6 +85,7 @@ class Enemy : public InteractiveEntity {
         std::vector<Animation> animations;
         std::vector<Texture2D*> sprites;
         int curAnimation, spriteFrame;
+        std::array<Character*, 3> inBattleCharacters;
 
 };
 
@@ -94,17 +97,24 @@ class World{
         ~World();
         void LoadFromTilemap(const std::string& filepath, World& world);
         void Update(float dt, Player &player);
-        void Draw();
-        bool IsWalkable(int x, int y);
+        void Draw(const Player &player);
+        void DrawCollisionDebug(Vector2 playerPos) const;
+        bool TryMove(Vector2& position, Vector2 nextPosition, int& elevation) const;
+        Vector2 FindSpawnPosition() const;
         int GetWidth() const { return width; }
         int GetHeight() const { return height; }
         std::vector<std::unique_ptr<Entity>>entities;
 
     private:
+        bool IsWalkableAtElevation(int x, int y, int elevation) const;
+        bool IsStairTile(int x, int y) const;
+        bool IsGroundPathTile(int x, int y) const;
+        bool IsBlockedByCollision(Rectangle playerBounds, int elevation) const;
+        bool TileBlocksPath(int gid) const;
+
         Resources &res;
-        int width = 150, height = 150;
+        int width = 30, height = 30;
         TilemapData tilemapData;
-        Texture2D *tilesetTexture = nullptr;
 };
 
 class Typewriter{
@@ -129,11 +139,12 @@ extern Typewriter typeWriter;
 class GUI{
 
     public:
-        GUI(bool setBlocker, GameData &data) : blockProgress(setBlocker), gameData(data) {}
+        GUI(bool setBlocker, GameData &data, bool drawWorld = false) : blockProgress(setBlocker), drawWorldUnderneath(drawWorld), gameData(data) {}
         virtual ~GUI() = default;
         virtual GUI* Update(float dt) = 0;
         virtual void Draw() = 0;
         bool blockProgress;
+        bool drawWorldUnderneath;
 
     protected:
         GameData &gameData;
@@ -222,27 +233,36 @@ class CharacterUI : public GUI{
         Texture2D *crit_dmg = nullptr;
 };
 
+class PauseUI : public GUI{
+
+    public:
+        explicit PauseUI(GameData &data);
+        ~PauseUI() = default;
+        GUI* Update(float dt) override;
+        void Draw() override;
+
+    private:
+        bool resumeClicked;
+        bool exitClicked;
+};
+
 
 struct Cam{
 
     Camera2D cam;
     float smoothSpeed = 5.0f;
-    int mapWidthPixels = 150 * TILE_SIZE;
-    int mapHeightPixels = 150 * TILE_SIZE;
-    const float viewWidth = 800.0f / cam.zoom, viewHeight = 450.0f / cam.zoom;
+    int mapWidthPixels = 30 * TILE_SIZE;
+    int mapHeightPixels = 30 * TILE_SIZE;
 
     Cam() {
         cam.target = { 0.0f, 0.0f };
-        cam.offset = { 400.0f, 225.0f };
+        cam.offset = { 0.0f, 0.0f };
         cam.rotation = 0.0f;
-        cam.zoom = 1.5f;
+        cam.zoom = 2.0f;
     }
 
-    void SetMapSize(int width, int height) {
-        mapWidthPixels = width * TILE_SIZE;
-        mapHeightPixels = height * TILE_SIZE;
-    }
-
+    void SetMapSize(int width, int height);
+    void SetTarget(Vector2 target) { cam.target = target; }
     void Update(float dt, const Vector2& playerPos);
 };
 
@@ -262,5 +282,5 @@ class GameScene : public Scene{
         Player player;
         GUI *gui;
         Music* background;
+        bool showCollisionDebug = false;
 };
-

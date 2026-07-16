@@ -1,9 +1,12 @@
 #include "gameScene.h"
 #include "gameData.h"
+#include "battleScene.h"
+#include "menuScene.h"
 #include "raygui.h"
 #include <raymath.h>
 #include <fstream>
 #include <ctime>
+#include <algorithm>
 
 Typewriter typeWriter;
 
@@ -86,7 +89,7 @@ void Typewriter::Draw() const{
     DrawTextEx(GuiGetFont(), renderingPart.c_str(), Vector2(x + 20, y + 20), 30, 1.0f ,WHITE);
 }
 
-OverlayUI::OverlayUI(GameData &data) : GUI(false, data){
+OverlayUI::OverlayUI(GameData &data) : GUI(false, data, true){
     charactersIcon = data.res.GetTexture("char_icon");
     dailyTasksIcon = data.res.GetTexture("tasks_icon");
     questsIcon = data.res.GetTexture("quests_icon");
@@ -103,6 +106,7 @@ void OverlayUI::TransitionBreatheInOut(Rectangle dest, Color peak){
 
 
 GUI* OverlayUI::Update(float dt){
+    if(IsKeyPressed(KEY_P)) return new PauseUI(gameData);
     if(typeWriter.isActive) return this;
     if(gameData.newQuest != nullptr){
         time += dt;
@@ -489,7 +493,7 @@ CharacterUI::CharacterUI(GameData &data) : GUI(true, data), selectedCharacter(0)
 }
 
 GUI* CharacterUI::Update(float){
-    const int characterCount = static_cast<int>(gameData.characters.size());
+    const int characterCount = gameData.playableCharacterCount;
     if(characterCount == 0) return this;
 
     if(IsKeyPressed(KEY_X) || crossClicked){
@@ -499,7 +503,7 @@ GUI* CharacterUI::Update(float){
 
     if(IsKeyPressed(KEY_W)){
         selectedCharacter--;
-        if(selectedCharacter < 0) selectedCharacter = characterCount + selectedCharacter;
+        if(selectedCharacter < 0) selectedCharacter = characterCount - 1;
         selectedSkill = -1;
         PlayButtonSfx(gameData);
     }
@@ -513,9 +517,8 @@ GUI* CharacterUI::Update(float){
 
 void CharacterUI::Draw(){
     int sW = GetScreenWidth(), sH = GetScreenHeight();
-    const int characterCount = static_cast<int>(gameData.characters.size());
-    if(characterCount == 0) return;
-    if(selectedCharacter >= characterCount) selectedCharacter = 0;
+    if(gameData.playableCharacterCount == 0) return;
+    if(selectedCharacter >= gameData.playableCharacterCount) selectedCharacter = 0;
 
     ClearBackground(Fade(BLACK, 0.1f));
     DrawTextEx(GuiGetFont(), "CHARACTERS", Vector2(100.0f, 40.0f), 45, 2.0f, WHITE);
@@ -539,26 +542,44 @@ void CharacterUI::Draw(){
         16
     };
 
-    for(int i = 0; i < characterCount; i++){
+    int k = 0;
+    for(int i = 0; i < gameData.characters.size(); i++){
+        if(gameData.characters[i].isEnemy){
+            continue;
+        }
         Rectangle dest = {
             100,
-            165 + 100*(i + 1),
+            165 + 100*(k + 1),
             28,
             28
         };
         Texture2D *portrait = gameData.characters[i].portrait;
-        if(!portrait) continue;
-        if(i == selectedCharacter){
-            DrawCircle(100 + 14, 165 + 100*(i + 1) + 14, 28, LIGHTGRAY);
-            DrawTexturePro(*portrait, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
+        if(k == selectedCharacter){
+            DrawCircle(100 + 14, 165 + 100*(k + 1) + 14, 28, LIGHTGRAY);
+            if(portrait) DrawTexturePro(*portrait, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
         }
-        else DrawTexturePro(*portrait, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
-        DrawCircleLines(100 + 14, 165 + 100*(i + 1) + 14, 28, WHITE);
+        else {
+            if(portrait) DrawTexturePro(*portrait, src, dest, (Vector2){0, 0}, 0.0f, WHITE);
+        }
+        DrawCircleLines(100 + 14, 165 + 100*(k + 1) + 14, 28, WHITE);
 
-        if(static_cast<bool>(GuiLabelButton(dest, nullptr))) selectedCharacter = i;
+        if(static_cast<bool>(GuiLabelButton(dest, nullptr))) selectedCharacter = k;
+        k++;
     }
 
-    const Character &current = gameData.characters[selectedCharacter];
+    const Character *currentPtr = nullptr;
+    int playableIdx = 0;
+    for(const auto &c : gameData.characters) {
+        if(!c.isEnemy) {
+            if(playableIdx == selectedCharacter) {
+                currentPtr = &c;
+                break;
+            }
+            playableIdx++;
+        }
+    }
+    if(!currentPtr) return;
+    const Character &current = *currentPtr;
 
     DrawTextEx(GuiGetFont(), current.name.c_str(), Vector2(200, 140), 50, 2.0f, WHITE);
     Rectangle dst = {
@@ -618,8 +639,75 @@ void CharacterUI::Draw(){
     }
 }
 
+PauseUI::PauseUI(GameData &data) : GUI(true, data, true), resumeClicked(false), exitClicked(false) {
+    ShowCursor();
+}
+
+GUI* PauseUI::Update(float) {
+    if (IsKeyPressed(KEY_P) || resumeClicked) {
+        return new OverlayUI(gameData);
+    }
+    if (exitClicked) {
+        return nullptr;
+    }
+    return this;
+}
+
+void PauseUI::Draw() {
+    int sW = GetScreenWidth();
+    int sH = GetScreenHeight();
+    
+    // 1. Screen Dimming
+    DrawRectangle(0, 0, sW, sH, Fade(BLACK, 0.4f));
+    
+    // 2. Dialogue Box dimensions
+    float boxWidth = 400.0f;
+    float boxHeight = 250.0f;
+    float boxX = (sW - boxWidth) / 2.0f;
+    float boxY = (sH - boxHeight) / 2.0f;
+    
+    // 3. Dialogue Box Panel & Border
+    // Complementary dark purple/slate background and lavender border
+    DrawRectangle(boxX, boxY, boxWidth, boxHeight, (Color){ 30, 30, 45, 240 });
+    DrawRectangleLinesEx((Rectangle){ boxX, boxY, boxWidth, boxHeight }, 3.0f, (Color){ 171, 155, 211, 255 });
+    
+    // 4. Title "Paused"
+    const char* titleText = "Paused";
+    Vector2 titleSize = MeasureTextEx(GuiGetFont(), titleText, 32, 2.0f);
+    float titleX = boxX + (boxWidth - titleSize.x) / 2.0f;
+    float titleY = boxY + 30.0f;
+    DrawTextEx(GuiGetFont(), titleText, (Vector2){ titleX, titleY }, 32.0f, 2.0f, WHITE);
+    
+    // 5. Buttons Layout
+    float buttonWidth = 140.0f;
+    float buttonHeight = 50.0f;
+    float spacing = 30.0f;
+    float totalButtonsWidth = (buttonWidth * 2.0f) + spacing;
+    float buttonsStartX = boxX + (boxWidth - totalButtonsWidth) / 2.0f;
+    float buttonsY = boxY + 130.0f;
+    
+    Rectangle resumeBounds = { buttonsStartX, buttonsY, buttonWidth, buttonHeight };
+    Rectangle exitBounds = { buttonsStartX + buttonWidth + spacing, buttonsY, buttonWidth, buttonHeight };
+    
+    // Temporarily set default text size to 24 for buttons
+    int oldTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 24);
+    
+    if (GuiButton(resumeBounds, "Resume")) {
+        PlayButtonSfx(gameData);
+        resumeClicked = true;
+    }
+    if (GuiButton(exitBounds, "Exit")) {
+        PlayButtonSfx(gameData);
+        exitClicked = true;
+    }
+    
+    // Restore previous text size
+    GuiSetStyle(DEFAULT, TEXT_SIZE, oldTextSize);
+}
+
 Player::Player(Resources &res) : speed(128.0f) , curAnimation(-1), spriteFrame(1){
-    position = { 128.0f, 128.0f };
+    position = { 500.0f, 500.0f };
     animations.resize(ANIMS);
     sprites.resize(SPRITES);
     sprites[AnimList::RUN_LEFT] = res.GetTexture("shadow_run_left");
@@ -658,19 +746,23 @@ void Player::Update(float dt, World& world){
 
     if(Vector2Length(movement) > 0.0f) movement = Vector2Normalize(movement);
     if(movement != (Vector2){0, 0}) last_dir = movement;
-    Vector2 nextPosition =
-    {
-        position.x + movement.x * speed * dt,
-        position.y + movement.y * speed * dt
-    };
 
-    int tileX = static_cast<int>(floorf(nextPosition.x / TILE_SIZE)), tileY = static_cast<int>(floorf(nextPosition.y / TILE_SIZE));
+    const Vector2 delta = { movement.x * speed * dt, movement.y * speed * dt };
+    int nextElevation = elevation;
 
-    if(world.IsWalkable(tileX, tileY)) {
-        position = nextPosition;
-        position.x = Clamp(position.x, 0.0f, world.GetWidth() * TILE_SIZE - 1.0f);
-        position.y = Clamp(position.y, 0.0f, world.GetHeight() * TILE_SIZE - 1.0f);
+    if (delta.x != 0.0f) {
+        const Vector2 tryX = { position.x + delta.x, position.y };
+        if (world.TryMove(position, tryX, nextElevation)) elevation = nextElevation;
     }
+
+    nextElevation = elevation;
+    if (delta.y != 0.0f) {
+        const Vector2 tryY = { position.x, position.y + delta.y };
+        if (world.TryMove(position, tryY, nextElevation)) elevation = nextElevation;
+    }
+
+    position.x = Clamp(position.x, 0.0f, world.GetWidth() * TILE_SIZE - TILE_SIZE);
+    position.y = Clamp(position.y, 0.0f, world.GetHeight() * TILE_SIZE - TILE_SIZE);
 }
 
 void Player::Draw() const{
@@ -780,33 +872,32 @@ void NPC::Draw() const{
 
 Enemy::Enemy(Resources &res): curAnimation(0), spriteFrame(1){
     position = { 0.0f, 0.0f };
-    name = "Enemy";
-    dialogueLines = {
-        "Grrr... I'm an enemy!",
-        "You will never defeat me!",
-        "This is my territory!",
-        "Defeat me and you can pass!"
-    };
     dialogueActive = false;
     canInteract = false;
     dialogueIndex = 0;
     animations.resize(ANIMS);
     sprites.resize(SPRITES);
-    sprites[AnimList::IDLE] = res.GetTexture("phantom_idle");
     animations[AnimList::IDLE] = Animation(6, 1.0f);
 
 }
 
-Enemy::Enemy(Resources &res, const Vector2 position, const std::string &name) : Enemy(res) {
+Enemy::Enemy(Resources &res, const Vector2 position, const std::string &name,
+             const std::vector<std::string>& dialogueLines, std::array<Character*, 3> inBattleCharacters, const std::string textureId) : Enemy(res) {
     this->position = position;
     this->name = name;
     this->id = name;
+    this->inBattleCharacters = inBattleCharacters;
+    this->sprites[AnimList::IDLE] = res.GetTexture(textureId);
+    if (!dialogueLines.empty()) this->dialogueLines = dialogueLines;
 }
 
 void Enemy::Update(float dt, Player& player){
     if(curAnimation != -1) animations[curAnimation].step(dt);
     if(HandleInteraction(player.GetPosition(), dt)){
-        gameData.QuestManager(EventType::KILL, id, 3);
+        //gameData.fighting = true;
+        //gameData.QuestManager(EventType::KILL, id, 3);
+        gameData.inBattleCharacters = inBattleCharacters;
+        gameData.fighting = true;
     }
 }
 
@@ -852,14 +943,121 @@ World::World(Resources &res) : res(res) {}
 World::~World() = default;
 
 void World::LoadFromTilemap(const std::string& filepath, World& world) {
+    world.entities.clear();
     try {
-        tilemapData = LoadFromFile(filepath, "Overworld.tsj", world, res);
+        tilemapData = LoadFromFile(filepath, world, res);
         width = tilemapData.width;
         height = tilemapData.height;
-        tilesetTexture = res.GetTexture("overworld_tileset");
     } catch (const std::exception& e) {
+        tilemapData = {};
+        width = 0;
+        height = 0;
         WriteErrorLog(std::string("ERROR: Failed to load tilemap: ") + e.what());
     }
+}
+
+bool World::TileBlocksPath(int gid) const {
+    if (gid <= 0) return false;
+    const TileProperties& props = tilemapData.GetTileProps(gid);
+    return props.blocksPath;
+}
+
+bool World::IsGroundPathTile(int x, int y) const {
+    if (x < 0 || x >= width || y < 0 || y >= height) return false;
+    const int gid = tilemapData.GetGid("Path", x, y);
+    if (gid <= 0) return false;
+    const TileProperties& props = tilemapData.GetTileProps(gid);
+    return !props.blocksPath;
+}
+
+bool World::IsStairTile(int x, int y) const {
+    if (tilemapData.GetGid("Platform", x, y) <= 0) return false;
+    if (IsGroundPathTile(x, y)) return true;
+
+    const int dirs[4][2] = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+    for (const auto& dir : dirs) {
+        const int nx = x + dir[0];
+        const int ny = y + dir[1];
+        if (IsGroundPathTile(nx, ny)) return true;
+    }
+    return false;
+}
+
+static Rectangle GetPlayerBounds(Vector2 pos) {
+    return { pos.x, pos.y, (float)TILE_SIZE, (float)TILE_SIZE };
+}
+
+bool World::IsBlockedByCollision(Rectangle playerBounds, int elevation) const {
+    (void)elevation;
+    for (const auto& rect : tilemapData.collisionRects) {
+        if (CheckCollisionRecs(playerBounds, rect.bounds)) return true;
+    }
+    return false;
+}
+
+bool World::IsWalkableAtElevation(int x, int y, int elevation) const {
+    if(x < 0 || x >= width || y < 0 || y >= height) return false;
+
+    if (elevation == 1) {
+        const int pathGid = tilemapData.GetGid("Path", x, y);
+        if(pathGid <= 0) return false;
+        if(TileBlocksPath(pathGid)) return false;
+
+        return true;
+    }
+
+    const int platformGid = tilemapData.GetGid("Platform", x, y);
+    if(platformGid <= 0) return false;
+    if(TileBlocksPath(platformGid)) return false;
+
+    return true;
+}
+
+bool World::TryMove(Vector2& position, Vector2 nextPosition, int& elevation) const {
+    const Rectangle nextBounds = GetPlayerBounds(nextPosition);
+    if (IsBlockedByCollision(nextBounds, elevation)) return false;
+
+    const int nextTileX = static_cast<int>(floorf((nextPosition.x + TILE_SIZE * 0.5f) / TILE_SIZE));
+    const int nextTileY = static_cast<int>(floorf((nextPosition.y + TILE_SIZE * 0.5f) / TILE_SIZE));
+    const int currentTileX = static_cast<int>(floorf((position.x + TILE_SIZE * 0.5f) / TILE_SIZE));
+    const int currentTileY = static_cast<int>(floorf((position.y + TILE_SIZE * 0.5f) / TILE_SIZE));
+
+    if (elevation == 1) {
+        if (IsStairTile(nextTileX, nextTileY) && IsWalkableAtElevation(nextTileX, nextTileY, 2)) {
+            elevation = 2;
+            position = nextPosition;
+            return true;
+        }
+        if (IsWalkableAtElevation(nextTileX, nextTileY, 1)) {
+            position = nextPosition;
+            return true;
+        }
+        return false;
+    }
+
+    if (IsWalkableAtElevation(nextTileX, nextTileY, 2)) {
+        position = nextPosition;
+        return true;
+    }
+
+    if (IsStairTile(currentTileX, currentTileY) && IsWalkableAtElevation(nextTileX, nextTileY, 1)) {
+        elevation = 1;
+        position = nextPosition;
+        return true;
+    }
+
+    return false;
+}
+
+Vector2 World::FindSpawnPosition() const {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (IsWalkableAtElevation(x, y, 1)) {
+                return {(float)(x * TILE_SIZE), (float)(y * TILE_SIZE)};
+            }
+        }
+    }
+    return {(float)(width * TILE_SIZE / 2), (float)(height * TILE_SIZE / 2)};
 }
 
 void World::Update(float dt, Player &player){
@@ -868,46 +1066,93 @@ void World::Update(float dt, Player &player){
     }
 }
 
-void World::Draw(){
-    if(!tilesetTexture) return;
-    for(int x = 0; x < width; x++){
-        for(int y = 0; y < height; y++){
+void World::Draw(const Player &player){
+    bool entitiesDrawn = false;
 
-            int tileId = tilemapData.GetTile(x, y);
-            Rectangle sourceRec = tilemapData.tileInfo[tileId-1].source;    
-            Rectangle destRec = {
-                (float)(x * TILE_SIZE),
-                (float)(y * TILE_SIZE),
-                TILE_SIZE,
-                TILE_SIZE
-            };
-            
-            DrawTexturePro(*tilesetTexture, sourceRec, destRec, {0, 0}, 0.0f, WHITE);
+    for (const auto& layerName : tilemapData.renderLayerNames) {
+        if (!entitiesDrawn && (layerName == "Treetops" || layerName == "Obstacles")) {
+            player.Draw();
+            for (auto &e : entities) {
+                e->Draw();
+            }
+            entitiesDrawn = true;
         }
-    }
-    for(auto &e : entities){
-        e->Draw();
+
+        const TileLayer* layer = tilemapData.GetLayer(layerName);
+        if (!layer) continue;
+
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                const int gid = layer->GetTile(x, y, width);
+                if (gid <= 0) continue;
+
+                const TileProperties& props = tilemapData.GetTileProps(gid);
+                if (props.textureId.empty()) continue;
+
+                Texture2D* texture = res.GetTexture(props.textureId);
+                if (!texture) continue;
+
+                const Rectangle destRec = {
+                    (float)(x * TILE_SIZE),
+                    (float)(y * TILE_SIZE),
+                    (float)TILE_SIZE,
+                    (float)TILE_SIZE
+                };
+
+                DrawTexturePro(*texture, props.source, destRec, {0, 0}, 0.0f, WHITE);
+            }
+        }
     }
 }
 
-bool World::IsWalkable(int x, int y){
-    if(x < 0 || x >= width || y < 0 || y >= height) return false;
-    return tilemapData.tileInfo[tilemapData.GetTile(x, y)-1].isWalkable;
+void World::DrawCollisionDebug(Vector2 playerPos) const {
+    const Rectangle playerBounds = GetPlayerBounds(playerPos);
+    DrawRectangleLinesEx(playerBounds, 2.0f, GREEN);
+
+    for (const auto& rect : tilemapData.collisionRects) {
+        Color color = RED;
+        if (rect.name == "Stairs_side") color = ORANGE;
+        else if (rect.name == "Border") color = RED;
+
+        DrawRectangleLinesEx(rect.bounds, 2.0f, color);
+    }
+}
+
+void Cam::SetMapSize(int width, int height) {
+    mapWidthPixels = width * TILE_SIZE;
+    mapHeightPixels = height * TILE_SIZE;
+
+    cam.offset = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
+    cam.zoom = 2.0f;
 }
 
 void Cam::Update(float dt, const Vector2& playerPos){
+    const float halfViewW = (GetScreenWidth() / cam.zoom) * 0.5f;
+    const float halfViewH = (GetScreenHeight() / cam.zoom) * 0.5f;
+
     float t = 1.0f - expf(-smoothSpeed * dt);
     cam.target.x += (playerPos.x - cam.target.x) * t;
     cam.target.y += (playerPos.y - cam.target.y) * t;
-    float minX = cam.offset.x / cam.zoom, maxX = mapWidthPixels - GetScreenWidth() + cam.offset.x / cam.zoom;
-    cam.target.x = Clamp(cam.target.x, minX, maxX);
-    float minY = cam.offset.y / cam.zoom, maxY = mapHeightPixels - GetScreenHeight() + cam.offset.y / cam.zoom;
-    cam.target.y = Clamp(cam.target.y, minY, maxY);
+
+    if (mapWidthPixels <= static_cast<int>(halfViewW * 2.0f)) {
+        cam.target.x = mapWidthPixels / 2.0f;
+    } else {
+        cam.target.x = Clamp(cam.target.x, halfViewW, mapWidthPixels - halfViewW);
+    }
+
+    if (mapHeightPixels <= static_cast<int>(halfViewH * 2.0f)) {
+        cam.target.y = mapHeightPixels / 2.0f;
+    } else {
+        cam.target.y = Clamp(cam.target.y, halfViewH, mapHeightPixels - halfViewH);
+    }
 }
 
 GameScene::GameScene() : world(gameData.res), player(gameData.res){
-    world.LoadFromTilemap("tilemapcpy.tmj", world);
+    world.LoadFromTilemap("data/map/tilemap/tilemap.tmj", world);
+    const Vector2 spawn = world.FindSpawnPosition();
+    player.SetPosition(spawn);
     camera.SetMapSize(world.GetWidth(), world.GetHeight());
+    camera.SetTarget(spawn);
     background = gameData.res.GetMusic("game_background_music");
     if(background) PlayMusicStream(*background);
     background->looping = true;
@@ -921,6 +1166,8 @@ GameScene::~GameScene(){
 
 Scene* GameScene::Update(float dt){
     if(background) UpdateMusicStream(*background);
+    if(IsKeyPressed(KEY_K)) showCollisionDebug = !showCollisionDebug;
+    if(gameData.fighting) return new BattleScene();
     if(!gui->blockProgress){
         world.Update(dt, player);
         player.Update(dt, world);
@@ -930,6 +1177,10 @@ Scene* GameScene::Update(float dt){
     next = gui->Update(dt);
     if(next != gui){
         PlayButtonSfx(gameData);
+        if(next == nullptr) {
+            if(background) StopMusicStream(*background);
+            return new MenuScene();
+        }
         delete gui;
         gui = next;
     }
@@ -937,13 +1188,17 @@ Scene* GameScene::Update(float dt){
 }
 
 void GameScene::Draw(){
+    ClearBackground((Color){ 20, 20, 30, 255 });
     BeginMode2D(camera.cam);
-    if(!gui->blockProgress){
-        world.Draw();
-        player.Draw();
+    if(gui->drawWorldUnderneath){
+        world.Draw(player);
+        if(showCollisionDebug) world.DrawCollisionDebug(player.GetPosition());
     }
     EndMode2D();
     gui->Draw();
     typeWriter.Draw();
+    if(showCollisionDebug){
+        DrawText("Collision Debug [F12]", 10, 10, 20, LIME);
+    }
 }
 

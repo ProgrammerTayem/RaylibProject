@@ -25,6 +25,8 @@ set(SOURCES
     src/menuScene.cpp
     src/gameScene.cpp
     src/Loader.cpp
+    src/battleScene.cpp
+    src/skillvm.cpp
 )
 
 # =========================
@@ -112,4 +114,10 @@ add_custom_command(TARGET RaylibProject POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/assets
     $<TARGET_FILE_DIR:RaylibProject>/assets
+)
+
+add_custom_command(TARGET RaylibProject POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/data
+    $<TARGET_FILE_DIR:RaylibProject>/data
 )

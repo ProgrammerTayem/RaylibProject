@@ -6,23 +6,34 @@
 #include <raylib.h>
 #include <nlohmann/json.hpp>
 
+using json = nlohmann::json;
+
 struct Stats {
     int ATK, HP;
     float DEF, CRIT_RATE, CRIT_DMG;
 };
 
+struct SkillModifiers{
+    std::string type;
+    std::map<std::string, json> additionalParams;
+};
+
 struct Skill {
-    std::string title, desc, id, type;
+    std::string title, desc, id, type, target;
+    int cooldown = 0;
     Texture2D *icon = nullptr;
+    std::vector<SkillModifiers> modifiers;
 };
 
 struct Character {
     std::string name, portrait_id;
+    bool isEnemy = false;
     Stats stats;
     static constexpr int SKILLS = 4;
     std::vector<Skill> skills;
     Texture2D *portrait = nullptr;
 };
+
 
 
 enum class ItemCategory { ALL, QUEST, CRAFTING, POTIONS, MISC };
@@ -111,8 +122,12 @@ struct GameData {
     std::vector<Quest> dailyTasks;
     Inventory inventory;
     Quest* trackingQuest = nullptr, *newQuest = nullptr;
+    std::array<Character*, 3> inBattleCharacters;
+    bool fighting = false;
+    int playableCharacterCount = 0;
 
     void LoadAll();
+    Character* GetCharacter(const std::string &id);
     void QuestManager(EventType event, std::string target, int amount = 1){
         for(auto &quest : quests){
             if(quest.unlockEvent.event == event && quest.unlockEvent.target_id == target && quest.locked){

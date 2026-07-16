@@ -10,11 +10,12 @@
 
 int main()
 {
-    InitWindow(1900, 1000, "Raylib Project");
+    InitWindow(1800, 1000, "Raylib Project");
     InitAudioDevice();
+    SetRandomSeed(static_cast<unsigned int>(time(NULL)));
     gameData.LoadAll();
     GuiLoadStyleLavanda();
-    //ToggleBorderlessWindowed();
+    ToggleBorderlessWindowed();
     Scene* scene = new StartupScene();
 
     while(!WindowShouldClose())

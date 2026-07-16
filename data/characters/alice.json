@@ -1,5 +1,6 @@
 {
     "name": "ALICE",
+    "isEnemy": false,
 
     "stats": {
         "ATK": 250,
@@ -16,28 +17,77 @@
             "type": "BASIC",
             "title": "BLAZING EDGE",
             "desc": "DEALS DAMAGE EQUAL TO 100% OF ATK TO THE SELECTED ENEMY",
-            "icon_id": "shadow1"
+            "icon_id": "shadow1",
+            "target": "enemy_single",
+            "cooldown": 0,
+            "effects": 
+            [
+                {
+                    "type": "damage",
+                    "scaling": "ATK",
+                    "multiplier": 1.0
+                }
+            ]
         },
 
         {
             "type": "UNIQUE",
             "title": "INFERNO ACCUMULATION",
-            "desc": "GRANTS 10% ATK BOOST AND 20% CRIT RATE BOOST TO SELF",
-            "icon_id": "shadow2"
+            "desc": "GRANTS 10% ATK BOOST AND 20% CRIT RATE BOOST TO SELF FOR 3 TURNS",
+            "icon_id": "shadow2",
+            "target": "self",
+            "cooldown": 3,
+            "effects":
+            [
+                {
+                    "type": "buff",
+                    "stat": "ATK",
+                    "value": 0.10,
+                    "duration": 3
+                },
+
+                {
+                    "type": "buff",
+                    "stat": "CRIT_RATE",
+                    "value": 0.20,
+                    "duration": 3
+                }
+            ]
         },
 
         {
-            "type": "ENHANCED",
+            "type": "PASSIVE",
             "title": "FOLLOW UP",
-            "desc": "GRANTS 2 STACKS OF COUNTER-ATTACK TO SELF (-1 STACK AFTER EACH TRIGGER)",
-            "icon_id": "shadow3"
+            "desc": "INCREASE ATK BY 0.5% EACH TIME CRIT IS TRIGGERED BY SELF",
+            "icon_id": "shadow3",
+            "target": "self",
+            "cooldown": -1,
+            "effects":
+            [
+                {
+                    "type": "buff",
+                    "stat": "ATK",
+                    "value": 0.005,
+                    "condition": "CRIT_TRIG"
+                }
+            ]
         },
 
         {
             "type": "ULTIMATE",
             "title": "HELL'S PARADISE",
-            "desc": "DEALS DAMAGE EQUAL TO 190% OF ATK TO THE SELECTED ENEMY, AND 70% OF ATK TO THE NEARBY ENEMIES",
-            "icon_id": "shadow4"
+            "desc": "DEALS DAMAGE EQUAL TO 200% OF ATK TO THE SELECTED ENEMY",
+            "icon_id": "shadow4",
+            "target": "enemy_single",
+            "cooldown": 5,
+            "effects": 
+            [
+                {
+                    "type": "damage",
+                    "scaling": "ATK",
+                    "multiplier": 2.0
+                }
+            ]
         }
     ]
 }

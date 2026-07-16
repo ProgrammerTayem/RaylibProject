@@ -40,8 +40,8 @@ void StartupScene::Draw()
     if(alpha < 0) alpha = 0;
     if(alpha > 1) alpha = 1;
 
-    const char* text = "GAME STUDIO";
-    int fontSize = 30;
+    const char* text = "D@W";
+    int fontSize = 400;
     int textWidth = MeasureText(text, fontSize);
     int x = (GetScreenWidth() - textWidth) / 2;
     int y = (GetScreenHeight() - fontSize) / 2;

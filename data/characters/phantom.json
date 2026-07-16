@@ -1,6 +1,6 @@
 {
-    "name": "SHADOW",
-    "isEnemy": false,
+    "name": "Phantom",
+    "isEnemy": true,
 
     "stats": {
         "ATK": 250,
@@ -10,7 +10,7 @@
         "CRIT_DMG": 1.2
     },
 
-    "portrait_id": "shadow_idle_right",
+    "portrait_id": "phantom_idle",
     
     "skills": [
         {
@@ -78,7 +78,7 @@
             "title": "HELL'S PARADISE",
             "desc": "DEALS DAMAGE EQUAL TO 200% OF ATK TO THE SELECTED ENEMY",
             "icon_id": "shadow4",
-            "target": "enemy_single",
+            "target":"enemy_single",
             "cooldown": 5,
             "effects": 
             [
