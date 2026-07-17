@@ -3,7 +3,7 @@
     "isEnemy": false,
 
     "stats": {
-        "ATK": 250,
+        "ATK": 80,
         "HP": 1000,
         "DEF": 0.12,
         "CRIT_RATE": 0.1,
@@ -56,6 +56,23 @@
         },
 
         {
+            "type": "ULTIMATE",
+            "title": "HELL'S PARADISE",
+            "desc": "DEALS DAMAGE EQUAL TO 200% OF ATK TO THE SELECTED ENEMY",
+            "icon_id": "shadow4",
+            "target": "enemy_single",
+            "cooldown": 5,
+            "effects": 
+            [
+                {
+                    "type": "damage",
+                    "scaling": "ATK",
+                    "multiplier": 2.0
+                }
+            ]
+        },
+
+        {
             "type": "PASSIVE",
             "title": "FOLLOW UP",
             "desc": "INCREASE ATK BY 0.5% EACH TIME CRIT IS TRIGGERED BY SELF",
@@ -69,23 +86,6 @@
                     "stat": "ATK",
                     "value": 0.005,
                     "condition": "CRIT_TRIG"
-                }
-            ]
-        },
-
-        {
-            "type": "ULTIMATE",
-            "title": "HELL'S PARADISE",
-            "desc": "DEALS DAMAGE EQUAL TO 200% OF ATK TO THE SELECTED ENEMY",
-            "icon_id": "shadow4",
-            "target": "enemy_single",
-            "cooldown": 5,
-            "effects": 
-            [
-                {
-                    "type": "damage",
-                    "scaling": "ATK",
-                    "multiplier": 2.0
                 }
             ]
         }

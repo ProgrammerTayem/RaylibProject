@@ -3,7 +3,7 @@
     "isEnemy": true,
 
     "stats": {
-        "ATK": 250,
+        "ATK": 100,
         "HP": 1000,
         "DEF": 0.12,
         "CRIT_RATE": 0.1,
@@ -55,23 +55,6 @@
             ]
         },
 
-        {
-            "type": "PASSIVE",
-            "title": "FOLLOW UP",
-            "desc": "INCREASE ATK BY 0.5% EACH TIME CRIT IS TRIGGERED BY SELF",
-            "icon_id": "shadow3",
-            "target": "self",
-            "cooldown": -1,
-            "effects":
-            [
-                {
-                    "type": "buff",
-                    "stat": "ATK",
-                    "value": 0.005,
-                    "condition": "CRIT_TRIG"
-                }
-            ]
-        },
 
         {
             "type": "ULTIMATE",
@@ -86,6 +69,24 @@
                     "type": "damage",
                     "scaling": "ATK",
                     "multiplier": 2.0
+                }
+            ]
+        },
+
+        {
+            "type": "PASSIVE",
+            "title": "FOLLOW UP",
+            "desc": "INCREASE ATK BY 0.5% EACH TIME CRIT IS TRIGGERED BY SELF",
+            "icon_id": "shadow3",
+            "target": "self",
+            "cooldown": -1,
+            "effects":
+            [
+                {
+                    "type": "buff",
+                    "stat": "ATK",
+                    "value": 0.005,
+                    "condition": "CRIT_TRIG"
                 }
             ]
         }

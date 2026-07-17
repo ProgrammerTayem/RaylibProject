@@ -858,14 +858,14 @@ void NPC::Draw() const{
         if(playerRelPosition == -1){
             DrawRectangle(position.x, position.y - TILE_SIZE - 40, 160, 40, Fade(BLACK, 0.7f));
             DrawRectangle(position.x, position.y - TILE_SIZE - 40, 40, 40, Fade(WHITE, 0.6f));
-            DrawText("[F]", position.x + 10, position.y + 10 - TILE_SIZE - 40, 20, WHITE);
+            DrawTextEx(GuiGetFont(), "[F]", Vector2(position.x + 10, position.y + 10 - TILE_SIZE - 40), 20, 1.5, WHITE);
             DrawTextEx(GuiGetFont(), "INTERACT", Vector2(position.x + 50, position.y + 10 - TILE_SIZE - 40), 20, 1.5f, WHITE);
         }
         else{
             DrawRectangle(position.x, position.y + TILE_SIZE, 160, 40, Fade(BLACK, 0.7f));
             DrawRectangle(position.x, position.y + TILE_SIZE, 40, 40, Fade(WHITE, 0.6f));
-            DrawText("[F]", position.x + 10, position.y + 10 + TILE_SIZE, 20, WHITE);
-            DrawText("Interact", position.x + 50, position.y + 10 + TILE_SIZE, 20, WHITE);
+            DrawTextEx(GuiGetFont(), "[F]", Vector2(position.x + 10, position.y + 10 + TILE_SIZE), 20, 1.5f, WHITE);
+            DrawTextEx(GuiGetFont(), "INTERACT", Vector2(position.x + 50, position.y + 10 + TILE_SIZE), 20, 1.5f, WHITE);
         }
     }
 }
@@ -1123,7 +1123,7 @@ void Cam::SetMapSize(int width, int height) {
     mapHeightPixels = height * TILE_SIZE;
 
     cam.offset = { GetScreenWidth() / 2.0f, GetScreenHeight() / 2.0f };
-    cam.zoom = 2.0f;
+    cam.zoom = 4.0f;
 }
 
 void Cam::Update(float dt, const Vector2& playerPos){
