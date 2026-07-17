@@ -704,10 +704,12 @@ static void LoadCharacterFromFile(GameData &data, const char *filepath){
         skill.desc = skillJson.at("desc").get<std::string>();
         skill.id = skillJson.at("icon_id").get<std::string>();
         skill.target = skillJson.at("target").get<std::string>();
-        skill.cooldown = skillJson.at("cooldown").get<int>();
+        skill.baseCooldown = skillJson.at("cooldown").get<int>();
+        skill.cooldown = 0;
         skill.icon = data.res.GetTexture(skill.id);
         for(const auto &effect : skillJson["effects"]){
             SkillModifiers modifier;
+            modifier.type = effect.at("type").get<std::string>();
             for(auto & [key, value] : effect.items()){
                 try{
                     modifier.additionalParams[key] = value;

@@ -8,9 +8,17 @@
 
 using json = nlohmann::json;
 
+struct ActiveBuff {
+    std::string stat;
+    float delta;
+    int duration;
+};
+
 struct Stats {
     int ATK, HP;
     float DEF, CRIT_RATE, CRIT_DMG;
+    int maxHP = 0;
+    std::vector<ActiveBuff> activeBuffs;
 };
 
 struct SkillModifiers{
@@ -21,6 +29,7 @@ struct SkillModifiers{
 struct Skill {
     std::string title, desc, id, type, target;
     int cooldown = 0;
+    int baseCooldown = 0;
     Texture2D *icon = nullptr;
     std::vector<SkillModifiers> modifiers;
 };

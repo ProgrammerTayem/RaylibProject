@@ -70,7 +70,6 @@ struct BattleAction{
 
 struct BattleContext{
     BattleTeam player, enemy;
-    BattleTeam copyPlayer, copyEnemy;
     BattleSide currentTurn;
     BattleState state = BattleState::Entering;
     BattleAction pendingAction;
@@ -92,6 +91,8 @@ class BattleUI{
         float timer = 0.0f, IntroOut = 2.6f;
         int selectedSkill = 0, selectedTarget = 0;
         bool showPlayerDependantUi = true;
+        float skillButtonOffset[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+        void UpdateSkillButtonOffsets(const BattleContext& ctx, float dt);
 };
 
 class BattleRenderer{

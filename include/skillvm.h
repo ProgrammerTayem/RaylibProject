@@ -6,6 +6,8 @@
 #include "gameData.h"
 
 struct BattleContext;
+struct BattleTeam;
+struct ActiveBuff;
 
 struct CritCalculation{
     std::map<float, double> PRDTable = {
@@ -43,22 +45,26 @@ struct CritCalculation{
 struct SkillVM{
     Stats *actorStats, *targetStats;
     Skill *skill;
+    bool lastWasCrit = false;
     std::vector<std::string> conditions;
     CritCalculation critCalc;
     void SkillConditions(){
+        conditions.clear();
         if(skill->modifiers.empty()) return;
         for(auto &mods : skill->modifiers){
-            for(auto &mod : mods.additionalParams){
-                if(mod.first == "condition"){
-                    conditions.push_back(mod.second);
-                }
+            auto it = mods.additionalParams.find("condition");
+            if(it != mods.additionalParams.end()){
+                conditions.push_back(it->second.get<std::string>());
             }
         }
     }
-    void Resolve(Stats *actor, Stats *target, Skill *skill);
+    void Resolve(Stats *actor, Stats *target, Skill *skill, const std::vector<Skill> *actorSkills = nullptr);
     void DamageTypeSkill(SkillModifiers &mod);
     void BuffTypeSkill(SkillModifiers &mod);
     void DebuffTypeSkill(SkillModifiers &mod);
     void HealTypeSkill(SkillModifiers &mod);
+    void ApplyPassives(Stats *actor, Stats *opponent, const std::vector<Skill> &skills, const std::string &trigger);
     void CooldownAndDurationManager(BattleContext &ctx);
+    void TickTeam(BattleTeam &team);
+    void RevertBuff(Stats &stats, const ActiveBuff &buff);
 };
