@@ -12,6 +12,7 @@ struct ActiveBuff {
     std::string stat;
     float delta;
     int duration;
+    std::string label = "";
 };
 
 struct Stats {
@@ -124,6 +125,11 @@ struct Resources {
     Music *GetMusic(const std::string &id);
 };
 
+struct BattleReport {
+    bool victory = false;
+    std::vector<std::string> defeatedEnemyNames;
+};
+
 struct GameData {
     Resources res;
     std::vector<Character> characters;
@@ -134,6 +140,7 @@ struct GameData {
     std::array<Character*, 3> inBattleCharacters;
     bool fighting = false;
     int playableCharacterCount = 0;
+    Vector2 preBattleSpawnPosition = {-1, -1};
 
     void LoadAll();
     Character* GetCharacter(const std::string &id);
@@ -154,6 +161,20 @@ struct GameData {
                     PlaySound(*(res.GetSfx("quest_complete")));
                 }
             }
+        }
+    }
+
+    /*
+    Post-battle integration entry point. Decouples the combat engine from the
+    quest system: the battle only needs to produce a BattleReport, and this
+    resolver translates defeated enemies into generic QuestManager KILL events.
+    Future battle-linked objectives (multiple enemies, partial credit, etc.) are
+    handled here without touching the combat engine.
+    */
+    void OnBattleResolved(const BattleReport& report){
+        if(!report.victory) return;
+        for(const auto& enemyName : report.defeatedEnemyNames){
+            QuestManager(EventType::KILL, enemyName, 1);
         }
     }
 };

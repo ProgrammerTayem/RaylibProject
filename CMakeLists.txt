@@ -26,6 +26,7 @@ set(SOURCES
     src/gameScene.cpp
     src/Loader.cpp
     src/battleScene.cpp
+    src/battleResultScene.cpp
     src/skillvm.cpp
 )
 

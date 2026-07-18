@@ -1,0 +1,14 @@
+{ "columns":16,
+ "image":"..\/..\/..\/assets\/tilesets\/assets.png",
+ "imageheight":864,
+ "imagewidth":512,
+ "margin":0,
+ "name":"assets",
+ "spacing":0,
+ "tilecount":432,
+ "tiledversion":"1.12.2",
+ "tileheight":32,
+ "tilewidth":32,
+ "type":"tileset",
+ "version":"1.10"
+}

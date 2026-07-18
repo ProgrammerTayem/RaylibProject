@@ -694,6 +694,7 @@ static void LoadCharacterFromFile(GameData &data, const char *filepath){
     const auto &stats = j.at("stats");
     character.stats.ATK = stats.at("ATK").get<int>();
     character.stats.HP = stats.at("HP").get<int>();
+    character.stats.maxHP = stats.value("maxHP", character.stats.HP);
     character.stats.DEF = stats.at("DEF").get<float>();
     character.stats.CRIT_RATE = stats.at("CRIT_RATE").get<float>();
     character.stats.CRIT_DMG = stats.at("CRIT_DMG").get<float>();

@@ -149,6 +149,10 @@
             "id" : "city_bg_6"
         }, 
         {
+            "path": "assets/background/battle/origbig.png",
+            "id": "battle_map"
+        },
+        {
             "path" : "assets/icon/gui_icon/exp.png",
             "id" : "exp"
         },
@@ -190,6 +194,10 @@
         {
             "path" : "assets/music/gameBackground.mp3",
             "id": "game_background_music"
+        },
+        {
+            "path" : "assets/music/battleMusic.mp3",
+            "id": "game_battle_music"
         }
     ],
     

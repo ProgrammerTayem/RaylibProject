@@ -3,7 +3,7 @@
     "isEnemy": true,
 
     "stats": {
-        "ATK": 100,
+        "ATK": 80,
         "HP": 1000,
         "DEF": 0.12,
         "CRIT_RATE": 0.1,

@@ -271,7 +271,7 @@ struct Cam{
 class GameScene : public Scene{
 
     public:
-        GameScene();
+        GameScene(Vector2 spawnPos = {-1, -1});
         ~GameScene();
         Scene* Update(float dt) override;
         void Draw() override;

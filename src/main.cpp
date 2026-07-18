@@ -13,6 +13,7 @@ int main()
     InitWindow(1800, 1000, "Raylib Project");
     InitAudioDevice();
     SetRandomSeed(static_cast<unsigned int>(time(NULL)));
+    SetExitKey(KEY_NULL);
     gameData.LoadAll();
     GuiLoadStyleLavanda();
     ToggleBorderlessWindowed();

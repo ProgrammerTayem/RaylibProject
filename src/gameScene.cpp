@@ -657,28 +657,22 @@ void PauseUI::Draw() {
     int sW = GetScreenWidth();
     int sH = GetScreenHeight();
     
-    // 1. Screen Dimming
     DrawRectangle(0, 0, sW, sH, Fade(BLACK, 0.4f));
     
-    // 2. Dialogue Box dimensions
     float boxWidth = 400.0f;
     float boxHeight = 250.0f;
     float boxX = (sW - boxWidth) / 2.0f;
     float boxY = (sH - boxHeight) / 2.0f;
     
-    // 3. Dialogue Box Panel & Border
-    // Complementary dark purple/slate background and lavender border
     DrawRectangle(boxX, boxY, boxWidth, boxHeight, (Color){ 30, 30, 45, 240 });
     DrawRectangleLinesEx((Rectangle){ boxX, boxY, boxWidth, boxHeight }, 3.0f, (Color){ 171, 155, 211, 255 });
     
-    // 4. Title "Paused"
     const char* titleText = "Paused";
     Vector2 titleSize = MeasureTextEx(GuiGetFont(), titleText, 32, 2.0f);
     float titleX = boxX + (boxWidth - titleSize.x) / 2.0f;
     float titleY = boxY + 30.0f;
     DrawTextEx(GuiGetFont(), titleText, (Vector2){ titleX, titleY }, 32.0f, 2.0f, WHITE);
     
-    // 5. Buttons Layout
     float buttonWidth = 140.0f;
     float buttonHeight = 50.0f;
     float spacing = 30.0f;
@@ -689,7 +683,6 @@ void PauseUI::Draw() {
     Rectangle resumeBounds = { buttonsStartX, buttonsY, buttonWidth, buttonHeight };
     Rectangle exitBounds = { buttonsStartX + buttonWidth + spacing, buttonsY, buttonWidth, buttonHeight };
     
-    // Temporarily set default text size to 24 for buttons
     int oldTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
     GuiSetStyle(DEFAULT, TEXT_SIZE, 24);
     
@@ -702,7 +695,6 @@ void PauseUI::Draw() {
         exitClicked = true;
     }
     
-    // Restore previous text size
     GuiSetStyle(DEFAULT, TEXT_SIZE, oldTextSize);
 }
 
@@ -1147,9 +1139,9 @@ void Cam::Update(float dt, const Vector2& playerPos){
     }
 }
 
-GameScene::GameScene() : world(gameData.res), player(gameData.res){
+GameScene::GameScene(Vector2 spawnPos) : world(gameData.res), player(gameData.res){
     world.LoadFromTilemap("data/map/tilemap/tilemap.tmj", world);
-    const Vector2 spawn = world.FindSpawnPosition();
+    Vector2 spawn = (spawnPos.x >= 0 && spawnPos.y >= 0) ? spawnPos : world.FindSpawnPosition();
     player.SetPosition(spawn);
     camera.SetMapSize(world.GetWidth(), world.GetHeight());
     camera.SetTarget(spawn);
@@ -1166,8 +1158,11 @@ GameScene::~GameScene(){
 
 Scene* GameScene::Update(float dt){
     if(background) UpdateMusicStream(*background);
-    if(IsKeyPressed(KEY_K)) showCollisionDebug = !showCollisionDebug;
-    if(gameData.fighting) return new BattleScene();
+    // if(IsKeyPressed(KEY_K)) showCollisionDebug = !showCollisionDebug;
+    if(gameData.fighting) {
+        gameData.preBattleSpawnPosition = player.GetPosition();
+        return new BattleScene();
+    }
     if(!gui->blockProgress){
         world.Update(dt, player);
         player.Update(dt, world);
@@ -1192,13 +1187,13 @@ void GameScene::Draw(){
     BeginMode2D(camera.cam);
     if(gui->drawWorldUnderneath){
         world.Draw(player);
-        if(showCollisionDebug) world.DrawCollisionDebug(player.GetPosition());
+        // if(showCollisionDebug) world.DrawCollisionDebug(player.GetPosition());
     }
     EndMode2D();
     gui->Draw();
     typeWriter.Draw();
-    if(showCollisionDebug){
-        DrawText("Collision Debug [F12]", 10, 10, 20, LIME);
-    }
+    // if(showCollisionDebug){
+    //     DrawText("Collision Debug [F12]", 10, 10, 20, LIME);
+    // }
 }
 

@@ -34,7 +34,7 @@ struct CritCalculation{
     };
     int N_ofTurns = 0;
 
-    float lerp(float a, float b, float t){
+    static float lerp(float a, float b, float t){
         return a + (b - a) * t;
     }
     float getCritForThisTurn(const float critRate);
@@ -43,24 +43,20 @@ struct CritCalculation{
 
 
 struct SkillVM{
-    Stats *actorStats, *targetStats;
-    Skill *skill;
+    Stats *actorStats = nullptr, *targetStats = nullptr;
+    Skill *skill = nullptr;
     bool lastWasCrit = false;
+    bool critDecided = false;
     std::vector<std::string> conditions;
     CritCalculation critCalc;
-    void SkillConditions(){
-        conditions.clear();
-        if(skill->modifiers.empty()) return;
-        for(auto &mods : skill->modifiers){
-            auto it = mods.additionalParams.find("condition");
-            if(it != mods.additionalParams.end()){
-                conditions.push_back(it->second.get<std::string>());
-            }
-        }
-    }
-    void Resolve(Stats *actor, Stats *target, Skill *skill, const std::vector<Skill> *actorSkills = nullptr);
-    void DamageTypeSkill(SkillModifiers &mod);
-    void BuffTypeSkill(SkillModifiers &mod);
+
+    void BeginAction();
+    void Prepare(Stats *actor, Stats *target, Skill *skill);
+    void SkillConditions();
+    void Resolve(Stats *actor, Stats *target, Skill *skill, const std::vector<Skill> *actorSkills = nullptr, bool applyDamage = true);
+    int ComputeDamage(Stats *actor, Stats *target, Skill *skill);
+    int DamageTypeSkill(SkillModifiers &mod, bool apply = true);
+    void BuffTypeSkill(SkillModifiers &mod, const std::string &label = "");
     void DebuffTypeSkill(SkillModifiers &mod);
     void HealTypeSkill(SkillModifiers &mod);
     void ApplyPassives(Stats *actor, Stats *opponent, const std::vector<Skill> &skills, const std::string &trigger);

@@ -47,7 +47,7 @@ int MenuScene::GuiSoundedButton(const Rectangle& bounds, const char* text){
 }
 
 MenuScene::MenuScene() : showOptions(false), opt(1), vsyncCheckboxValue(false), fpsValue(1), antiAliasingValue(0), cursorVisibilityValue(0), fpsDropdownEdit(false), antiAliasingDropdownEdit(false), fadeoutActive(false) {
-    buttonPressed.resize(buttons::SAVE + 1, false);
+    buttonPressed.resize(buttons::KEYBINDINGS_CLOSE + 1, false);
     windowBoxActive.resize(windowBox::CNFRM_EXIT + 1, false);
     SliderBarValue.resize(sliderBar::SFX + 1, 0.0f);
     SliderBarValue = {100.0f, 75.0f, 75.0f};
@@ -67,10 +67,16 @@ Scene* MenuScene::Update(float dt){
 
     if(menuMusic) SetMusicVolume(*menuMusic, masterVol * musicVol);
     if(buttonClickSound) SetSoundVolume(*buttonClickSound, masterVol * sfxVol);
+    if(showKeybindings){
+        if(buttonPressed[buttons::KEYBINDINGS_CLOSE] || IsKeyPressed(KEY_ESCAPE)) showKeybindings = false;
+    }
     if(buttonPressed[buttons::CONTINUE] || buttonPressed[buttons::NEW_YES]) fadeoutActive = true;
     if(fadeoutActive){
         timer += dt;
-        if(timer > 2.0f) return new GameScene();
+        if(timer > 2.0f){
+            if(menuMusic) StopMusicStream(*menuMusic);
+            return new GameScene();
+        }
     }
     if(windowBoxActive[windowBox::CNFRM_EXIT]){
         if(buttonPressed[buttons::EXIT_YES]){
@@ -130,6 +136,7 @@ void MenuScene::Draw(){
     else if(showOptions){
         GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
         //GuiGroupBox((Rectangle){ 536, 200, 936, 520 }, NULL);
+        if(showKeybindings) GuiLock();
         GuiPanel((Rectangle){ 536, 200, 936, 520 }, NULL);
         if(opt == 1){
             GuiSliderBar((Rectangle){ 760, 304, 536, 24 }, "MASTER VOLUME", NULL, &SliderBarValue[sliderBar::MASTER_VOL], 0, 100);
@@ -165,7 +172,7 @@ void MenuScene::Draw(){
         if(opt == 3){
                 GuiLabel((Rectangle){ 648, 304, 168, 32 }, "CURSOR VISIBILITY");
                 GuiToggleGroup((Rectangle){ 824, 304, 128, 32 }, "ON TOGGLE;ON HOLD", &cursorVisibilityValue);
-                GuiSoundedButton((Rectangle) { 648, 360, 200, 32 }, "KEYBINDINGS");
+                if(GuiSoundedButton((Rectangle) { 648, 360, 200, 32 }, "KEYBINDINGS")) showKeybindings = true;
                 buttonPressed[buttons::VOLUME_GRP] = GuiSoundedButton((Rectangle){ 536, 168, 312, 32 }, "VOLUME");
                 buttonPressed[buttons::GRAPHICS_GRP] = GuiSoundedButton((Rectangle){ 848, 168, 312, 32 }, "GRAPHICS");
                 GuiLock();
@@ -179,6 +186,10 @@ void MenuScene::Draw(){
             buttonPressed[buttons::SAVE] = GuiSoundedButton((Rectangle){ 1172, 721, 150, 55}, "SAVE");
             GuiDrawIcon(ICON_FILE_SAVE_CLASSIC, 1180, 730, 2, WHITE);
         }
+        if(showKeybindings){
+            GuiUnlock();
+            DrawKeybindingsOverlay();
+        }
     }
     if(fadeoutActive){
         GuiUnlock();
@@ -187,4 +198,94 @@ void MenuScene::Draw(){
         if(alpha > 1) alpha = 1;
         DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, alpha));
     }
+}
+
+void MenuScene::DrawKeybindingsOverlay(){
+    struct KeyRow { const char* action; const char* key; };
+    struct KeyGroup { const char* title; std::vector<KeyRow> rows; };
+
+    static const std::vector<KeyGroup> groups = {
+        { "MOVEMENT (HELD)", {
+            { "Move Up",    "W" },
+            { "Move Down",  "S" },
+            { "Move Left",  "A" },
+            { "Move Right", "D" },
+        }},
+        { "INTERACTION & DIALOGUE", {
+            { "Talk / Interact", "F" },
+            { "Advance Dialogue", "Enter" },
+            { "Skip Intro",      "Enter / Left Click" },
+        }},
+        { "IN-GAME MENUS", {
+            { "Pause",       "P" },
+            { "Inventory",   "I" },
+            { "Quests",      "Q" },
+            { "Daily Tasks", "T" },
+            { "Character",   "C" },
+        }},
+        { "MENU NAVIGATION", {
+            { "Close Panel",         "X" },
+            { "Next / Prev Tab",     "E / Q" },
+            { "Prev / Next Character", "W / S" },
+        }},
+        { "BATTLE", {
+            { "Select Skill",     "1 / 2 / 3" },
+            { "Confirm Skill",    "Enter" },
+            { "Switch Character", "S" },
+            { "Switch Left / Right", "L / R" },
+            { "Skip Turn",        "X" },
+            { "Forfeit Yes / No", "Y / N / Esc" },
+        }},
+    };
+
+    const float winX = 360.0f, winY = 120.0f, winW = 1200.0f, winH = 840.0f;
+
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.5f));
+
+    int oldTextSize = GuiGetStyle(DEFAULT, TEXT_SIZE);
+    int oldAlign = GuiGetStyle(DEFAULT, TEXT_ALIGNMENT);
+
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 24);
+    GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
+    if(GuiWindowBox((Rectangle){ winX, winY, winW, winH }, "KEYBINDINGS")) showKeybindings = false;
+
+    const float colW = winW / 2.0f;
+    const float rowH = 34.0f;
+    const float groupGap = 20.0f;
+    const float labelPad = 40.0f;
+    const float startY = winY + 60.0f;
+
+    GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
+
+    float colY[2] = { startY, startY };
+    for(size_t g = 0; g < groups.size(); g++){
+        int col = (g < 3) ? 0 : 1;
+        float baseX = winX + colW * col;
+        float& y = colY[col];
+
+        GuiSetStyle(DEFAULT, TEXT_SIZE, 22);
+        GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, ColorToInt(GOLD));
+        GuiLabel((Rectangle){ baseX + labelPad, y, colW - labelPad * 2, rowH }, groups[g].title);
+        GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, ColorToInt(RAYWHITE));
+        y += rowH;
+
+        GuiSetStyle(DEFAULT, TEXT_SIZE, 18);
+        for(const KeyRow& r : groups[g].rows){
+            GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
+            GuiLabel((Rectangle){ baseX + labelPad, y, colW * 0.55f, rowH }, r.action);
+            GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_RIGHT);
+            GuiLabel((Rectangle){ baseX + colW * 0.5f, y, colW * 0.5f - labelPad, rowH }, r.key);
+            y += rowH;
+        }
+        y += groupGap;
+    }
+
+    GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 24);
+    buttonPressed[buttons::KEYBINDINGS_CLOSE] =
+        GuiSoundedButton((Rectangle){ winX + winW / 2.0f - 100.0f, winY + winH - 70.0f, 200.0f, 50.0f }, "CLOSE");
+
+    GuiSetStyle(LABEL, TEXT_COLOR_NORMAL, ColorToInt(RAYWHITE));
+    GuiSetStyle(DEFAULT, TEXT_SIZE, oldTextSize);
+    GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, oldAlign);
 }

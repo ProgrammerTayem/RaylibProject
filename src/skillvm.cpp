@@ -1,6 +1,8 @@
 #include "skillvm.h"
 #include "battleScene.h"
 #include "nlohmann/json.hpp"
+#include <fstream>
+#include <ctime>
 
 float CritCalculation::getCritForThisTurn(const float critRate){
     N_ofTurns++;
@@ -27,15 +29,34 @@ bool CritCalculation::isCrit(const float critRate){
     return false;
 }
 
-void SkillVM::Resolve(Stats *actor, Stats *target, Skill *skill, const std::vector<Skill> *actorSkills){
+void SkillVM::BeginAction(){
+    critDecided = false;
+    lastWasCrit = false;
+}
+
+void SkillVM::Prepare(Stats *actor, Stats *target, Skill *skill){
     actorStats = actor;
     targetStats = target;
     this->skill = skill;
     if(actorStats->maxHP <= 0) actorStats->maxHP = actorStats->HP;
     if(targetStats->maxHP <= 0) targetStats->maxHP = targetStats->HP;
     SkillConditions();
+}
+
+void SkillVM::SkillConditions(){
+    conditions.clear();
+    for(auto &mods : skill->modifiers){
+        auto it = mods.additionalParams.find("condition");
+        if(it != mods.additionalParams.end()){
+            conditions.push_back(it->second.get<std::string>());
+        }
+    }
+}
+
+void SkillVM::Resolve(Stats *actor, Stats *target, Skill *skill, const std::vector<Skill> *actorSkills, bool applyDamage){
+    Prepare(actor, target, skill);
     for(auto &mod: skill->modifiers){
-        if(mod.type == "damage") DamageTypeSkill(mod);
+        if(mod.type == "damage") DamageTypeSkill(mod, applyDamage);
         else if(mod.type == "buff") BuffTypeSkill(mod);
         else if(mod.type == "debuff") DebuffTypeSkill(mod);
         else if(mod.type == "heal") HealTypeSkill(mod);
@@ -53,22 +74,32 @@ void SkillVM::ApplyPassives(Stats *actor, Stats *opponent, const std::vector<Ski
     for(const Skill &passive : skills){
         if(passive.type != "PASSIVE") continue;
         for(const SkillModifiers &mod : passive.modifiers){
-            bool matches = false;
             auto it = mod.additionalParams.find("condition");
-            if(it != mod.additionalParams.end() && it->second.get<std::string>() == trigger) matches = true;
-            if(!matches) continue;
-            if(mod.type == "buff") BuffTypeSkill(const_cast<SkillModifiers&>(mod));
-            else if(mod.type == "debuff") DebuffTypeSkill(const_cast<SkillModifiers&>(mod));
-            else if(mod.type == "heal") HealTypeSkill(const_cast<SkillModifiers&>(mod));
+            if(it == mod.additionalParams.end() || it->second.get<std::string>() != trigger) continue;
+            SkillModifiers &m = const_cast<SkillModifiers&>(mod);
+            if(m.additionalParams.find("duration") == m.additionalParams.end())
+                m.additionalParams["duration"] = -1;
+            if(m.type == "buff") BuffTypeSkill(m, passive.title);
+            else if(m.type == "debuff") DebuffTypeSkill(m);
+            else if(m.type == "heal") HealTypeSkill(m);
         }
     }
 }
 
-void SkillVM::DamageTypeSkill(SkillModifiers &mod){
+int SkillVM::DamageTypeSkill(SkillModifiers &mod, bool apply){
     float ATKScale = 0.0f, DEFScale = 0.0f, HPScale = 0.0f;
     bool hasScale = false;
-    bool isCrit = critCalc.isCrit(actorStats->CRIT_RATE);
-    lastWasCrit = isCrit;
+    bool isCrit;
+    if(critDecided){
+        isCrit = lastWasCrit;
+    }
+    else{
+        bool first = critCalc.isCrit(actorStats->CRIT_RATE);
+        bool second = critCalc.isCrit(actorStats->CRIT_RATE);
+        isCrit = first || second;
+        lastWasCrit = isCrit;
+        critDecided = true;
+    }
     if(mod.additionalParams.find("scaling") != mod.additionalParams.end()){
         std::string scaleType = mod.additionalParams["scaling"];
         hasScale = true;
@@ -99,82 +130,92 @@ void SkillVM::DamageTypeSkill(SkillModifiers &mod){
         + (HPScale * static_cast<float>(actorStats->HP));
     float trueDamage = std::max(0.0f, totalRealDamage * (1.0f - targetStats->DEF));
     trueDamage += critDMG * (1.0f - targetStats->DEF);
-    targetStats->HP -= static_cast<int>(trueDamage);
-    if(targetStats->HP < 0) targetStats->HP = 0;
+    int damage = static_cast<int>(trueDamage);
+    if(apply){
+        targetStats->HP -= damage;
+        if(targetStats->HP < 0) targetStats->HP = 0;
+    }
+    return damage;
 }
 
-void SkillVM::BuffTypeSkill(SkillModifiers &mod){
-    if(mod.additionalParams.find("stat") != mod.additionalParams.end()){
-        std::string stat = mod.additionalParams["stat"];
-        float multiplier = mod.additionalParams["value"];
-        float delta = 0.0f;
-        int duration = (mod.additionalParams.find("duration") != mod.additionalParams.end())
-            ? static_cast<int>(mod.additionalParams["duration"]) : 0;
-        if(stat == "ATK"){
-            delta = actorStats->ATK * multiplier;
-            actorStats->ATK += static_cast<int>(delta);
-        }
-        else if(stat == "DEF"){
-            delta = actorStats->DEF * multiplier;
-            actorStats->DEF += delta;
-        }
-        else if(stat == "HP"){
-            delta = actorStats->HP * multiplier;
-            actorStats->HP += static_cast<int>(delta);
-            if(actorStats->HP > actorStats->maxHP) actorStats->HP = actorStats->maxHP;
-        }
-        else if(stat == "CRIT_RATE"){
-            delta = multiplier;
-            actorStats->CRIT_RATE += delta;
-        }
-        else if(stat == "CRIT_DMG"){
-            delta = multiplier;
-            actorStats->CRIT_DMG += delta;
-        }
-        if(duration > 0){
-            actorStats->activeBuffs.push_back({stat, delta, duration});
-        }
+int SkillVM::ComputeDamage(Stats *actor, Stats *target, Skill *skill){
+    Prepare(actor, target, skill);
+    int total = 0;
+    for(auto &mod: skill->modifiers){
+        if(mod.type == "damage") total += DamageTypeSkill(mod, false);
+    }
+    return total;
+}
+
+void SkillVM::BuffTypeSkill(SkillModifiers &mod, const std::string &label){
+    auto it = mod.additionalParams.find("stat");
+    if(it == mod.additionalParams.end()) return;
+    std::string stat = it->second;
+    float multiplier = mod.additionalParams["value"];
+    float delta = 0.0f;
+    int duration = (mod.additionalParams.find("duration") != mod.additionalParams.end())
+        ? static_cast<int>(mod.additionalParams["duration"]) : 0;
+    if(stat == "ATK"){
+        delta = actorStats->ATK * multiplier;
+        actorStats->ATK += static_cast<int>(delta);
+    }
+    else if(stat == "DEF"){
+        delta = actorStats->DEF * multiplier;
+        actorStats->DEF += delta;
+    }
+    else if(stat == "HP"){
+        delta = actorStats->HP * multiplier;
+        actorStats->HP += static_cast<int>(delta);
+        if(actorStats->HP > actorStats->maxHP) actorStats->HP = actorStats->maxHP;
+    }
+    else if(stat == "CRIT_RATE"){
+        delta = multiplier;
+        actorStats->CRIT_RATE += delta;
+    }
+    else if(stat == "CRIT_DMG"){
+        delta = multiplier;
+        actorStats->CRIT_DMG += delta;
+    }
+    if(duration != 0){
+        actorStats->activeBuffs.push_back({stat, delta, duration, label});
     }
 }
 
 void SkillVM::HealTypeSkill(SkillModifiers &mod){
-    if(mod.additionalParams.find("stat") != mod.additionalParams.end()){
-        std::string stat = mod.additionalParams["stat"];
-        float multiplier = mod.additionalParams["value"];
-        if(stat == "HP"){
-            int heal = static_cast<int>(targetStats->maxHP * multiplier);
-            targetStats->HP += heal;
-            if(targetStats->HP > targetStats->maxHP) targetStats->HP = targetStats->maxHP;
-        }
-    }
+    auto it = mod.additionalParams.find("stat");
+    if(it == mod.additionalParams.end()) return;
+    if(it->second != "HP") return;
+    float multiplier = mod.additionalParams["value"];
+    int heal = static_cast<int>(targetStats->maxHP * multiplier);
+    targetStats->HP = std::min(targetStats->HP + heal, targetStats->maxHP);
 }
 
 void SkillVM::DebuffTypeSkill(SkillModifiers &mod){
-    if(mod.additionalParams.find("stat") != mod.additionalParams.end()){
-        std::string stat = mod.additionalParams["stat"];
-        float multiplier = mod.additionalParams["value"];
-        float delta = 0.0f;
-        int duration = (mod.additionalParams.find("duration") != mod.additionalParams.end())
-            ? static_cast<int>(mod.additionalParams["duration"]) : 0;
-        if(stat == "ATK"){
-            delta = targetStats->ATK * multiplier;
-            targetStats->ATK = std::max(0, targetStats->ATK - static_cast<int>(delta));
-        }
-        else if(stat == "DEF"){
-            delta = targetStats->DEF * multiplier;
-            targetStats->DEF = std::max(0.0f, targetStats->DEF - delta);
-        }
-        else if(stat == "CRIT_RATE"){
-            delta = multiplier;
-            targetStats->CRIT_RATE = std::max(0.0f, targetStats->CRIT_RATE - delta);
-        }
-        else if(stat == "CRIT_DMG"){
-            delta = multiplier;
-            targetStats->CRIT_DMG = std::max(0.0f, targetStats->CRIT_DMG - delta);
-        }
-        if(duration > 0){
-            targetStats->activeBuffs.push_back({stat, -delta, duration});
-        }
+    auto it = mod.additionalParams.find("stat");
+    if(it == mod.additionalParams.end()) return;
+    std::string stat = it->second;
+    float multiplier = mod.additionalParams["value"];
+    float delta = 0.0f;
+    int duration = (mod.additionalParams.find("duration") != mod.additionalParams.end())
+        ? static_cast<int>(mod.additionalParams["duration"]) : 0;
+    if(stat == "ATK"){
+        delta = targetStats->ATK * multiplier;
+        targetStats->ATK = std::max(0, targetStats->ATK - static_cast<int>(delta));
+    }
+    else if(stat == "DEF"){
+        delta = targetStats->DEF * multiplier;
+        targetStats->DEF = std::max(0.0f, targetStats->DEF - delta);
+    }
+    else if(stat == "CRIT_RATE"){
+        delta = multiplier;
+        targetStats->CRIT_RATE = std::max(0.0f, targetStats->CRIT_RATE - delta);
+    }
+    else if(stat == "CRIT_DMG"){
+        delta = multiplier;
+        targetStats->CRIT_DMG = std::max(0.0f, targetStats->CRIT_DMG - delta);
+    }
+    if(duration > 0){
+        targetStats->activeBuffs.push_back({stat, -delta, duration});
     }
 }
 
@@ -186,11 +227,15 @@ void SkillVM::CooldownAndDurationManager(BattleContext &ctx){
 void SkillVM::TickTeam(BattleTeam &team){
     for(int i = 0; i < team.members.size(); ++i){
         C &member = team.members[i];
-        for(int j = 0; j < member.skills.size(); ++j){
-            if(member.skills[j].cooldown > 0) member.skills[j].cooldown--;
+        for(auto &s : member.skills){
+            if(s.cooldown > 0) s.cooldown--;
         }
         for(size_t b = 0; b < member.stats.activeBuffs.size(); ){
             ActiveBuff &buff = member.stats.activeBuffs[b];
+            if(buff.duration < 0){
+                b++;
+                continue;
+            }
             buff.duration--;
             if(buff.duration <= 0){
                 RevertBuff(member.stats, buff);
@@ -209,8 +254,7 @@ void SkillVM::RevertBuff(Stats &stats, const ActiveBuff &buff){
         stats.DEF = std::max(0.0f, stats.DEF - buff.delta);
     }
     else if(buff.stat == "HP"){
-        stats.HP = std::max(0, stats.HP - static_cast<int>(buff.delta));
-        if(stats.HP > stats.maxHP) stats.HP = stats.maxHP;
+        stats.HP = std::min(std::max(0, stats.HP - static_cast<int>(buff.delta)), stats.maxHP);
     }
     else if(buff.stat == "CRIT_RATE"){
         stats.CRIT_RATE = std::max(0.0f, stats.CRIT_RATE - buff.delta);
