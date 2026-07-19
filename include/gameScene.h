@@ -63,10 +63,18 @@ class InteractiveEntity : public Entity {
 class NPC : public InteractiveEntity {
 
     public:
+        explicit NPC(Resources &res);
         NPC();
-        NPC MakeNPC(std::string& name, Vector2 position, std::vector<std::string>& DialogueLines);
+        static NPC MakeNPC(Resources &res, std::string& name, Vector2 position, std::vector<std::string>& DialogueLines);
         void Update(float dt, Player& player) override;
         void Draw() const override;
+
+    private:
+        enum AnimList {IDLE};
+        const int ANIMS = 1, SPRITES = 1;
+        std::vector<Animation> animations;
+        std::vector<Texture2D*> sprites;
+        int curAnimation, spriteFrame;
 };
 
 class Enemy : public InteractiveEntity {
@@ -104,6 +112,7 @@ class World{
         int GetWidth() const { return width; }
         int GetHeight() const { return height; }
         std::vector<std::unique_ptr<Entity>>entities;
+        const std::vector<TriggerRect>& GetTriggerRects() const { return tilemapData.triggerRects; }
 
     private:
         bool IsWalkableAtElevation(int x, int y, int elevation) const;
@@ -271,7 +280,7 @@ struct Cam{
 class GameScene : public Scene{
 
     public:
-        GameScene(Vector2 spawnPos = {-1, -1});
+        GameScene(Vector2 spawnPos = {-1, -1}, const std::string& mapPath = "data/map/tilemap/tilemap.tmj");
         ~GameScene();
         Scene* Update(float dt) override;
         void Draw() override;
@@ -283,4 +292,15 @@ class GameScene : public Scene{
         GUI *gui;
         Music* background;
         bool showCollisionDebug = false;
+        std::string currentMap;
+        bool transitioning = false;
+        float fadeAlpha = 0.0f;
+        bool fadeOut = false;
+        float transitionProtection = 0.0f;
+        Vector2 pendingSpawn = {-1, -1};
+        std::string pendingMap;
+        void LoadMap(const std::string& mapPath, Vector2 spawnPos);
+        void CheckTriggers();
+        void StartMapTransition();
+        void StartMapTransition(const std::string& targetMap, Vector2 spawnPos);
 };

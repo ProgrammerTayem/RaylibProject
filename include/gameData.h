@@ -49,6 +49,7 @@ struct Character {
 enum class ItemCategory { ALL, QUEST, CRAFTING, POTIONS, MISC };
 
 struct InventoryItem {
+    std::string id;
     std::string name;
     std::string description;
     ItemCategory category;
@@ -141,8 +142,13 @@ struct GameData {
     bool fighting = false;
     int playableCharacterCount = 0;
     Vector2 preBattleSpawnPosition = {-1, -1};
+    Vector2 playerPosition = {0.0f, 0.0f};
+    std::string currentMap = "data/map/tilemap/tilemap.tmj";
 
     void LoadAll();
+    void SaveGame() const;
+    void LoadSave();
+    void DeleteSave();
     Character* GetCharacter(const std::string &id);
     void QuestManager(EventType event, std::string target, int amount = 1){
         for(auto &quest : quests){

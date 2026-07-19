@@ -23,7 +23,7 @@ Scene* BattleResultScene::Update(float dt){
             if(exitAlpha >= 1.0f){
             if(continueClicked || returnClicked) gameData.fighting = false;
             if(retryClicked) gameData.fighting = true;
-            return new GameScene(gameData.preBattleSpawnPosition);
+            return new GameScene(gameData.preBattleSpawnPosition, gameData.currentMap);
             }
         return this;
     }

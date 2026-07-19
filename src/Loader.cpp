@@ -167,7 +167,7 @@ Parameters:
 Returns:
     std::string - the resolved path
 */
-static std::string ResolveDataPath(const std::string& relativePath) {
+std::string ResolveDataPath(const std::string& relativePath) {
     if(std::filesystem::exists(relativePath)) return relativePath;
 
     const std::vector<std::filesystem::path> candidates = {
@@ -213,6 +213,7 @@ static std::string TextureIdForImage(const std::string& imageName) {
         {"Topdown RPG 32x32 - Tree Stumps and Logs 1.2.PNG", "tree_stumps_logs_tileset"},
         {"Topdown RPG 32x32 - Trees 1.2.PNG", "trees_tileset"},
         {"Topdown RPG 32x32 - Bushes 1.1.PNG", "bushes_tileset"},
+        {"assets.png", "assets_tileset"},
     };
 
     const std::filesystem::path imagePath(imageName);
@@ -336,7 +337,8 @@ void LoadTileMap(TilemapData& data, const std::string& tilemap, World& world, Re
     // Trigger layer
     // ------------------
 
-    const json* triggerLayer = FindJsonLayerByName(j["layers"], "Triggers");
+    const json* triggerLayer = FindJsonLayerByName(j["layers"], "Trigger");
+    if(!triggerLayer) triggerLayer = FindJsonLayerByName(j["layers"], "Triggers");
     if(triggerLayer && triggerLayer->contains("objects")) {
         for (const auto& obj : triggerLayer->at("objects")) {
             TriggerRect rect;
@@ -364,7 +366,7 @@ void LoadTileMap(TilemapData& data, const std::string& tilemap, World& world, Re
     const json* entitiesLayer = FindJsonLayerByName(j["layers"], "Entities");
     if(!entitiesLayer || !entitiesLayer->contains("objects")){
         WriteErrorLog("WARNING: Entities layer has no objects");
-        throw std::runtime_error("Entities layer has no objects");
+        return;
     }
 
     for (const auto& obj : entitiesLayer->at("objects")) {
@@ -383,7 +385,7 @@ void LoadTileMap(TilemapData& data, const std::string& tilemap, World& world, Re
         if (type == "NPC") {
             std::vector<std::string> dialogueLines = LoadDialogueLines(dialoguePath);
             std::string npcName = name;
-            NPC npc = NPC().MakeNPC(npcName, Vector2{(float)x, (float)y}, dialogueLines);
+            NPC npc = NPC().MakeNPC(res, npcName, Vector2{(float)x, (float)y}, dialogueLines);
             world.entities.push_back(std::make_unique<NPC>(std::move(npc)));
 
 
@@ -837,6 +839,7 @@ void LoadInventory(GameData &data) {
         i.icon_id = item["icon_id"];
         i.icon = data.res.GetTexture(i.icon_id);
         i.name = item["name"];
+        i.id = item["id"].get<std::string>();
         std::string id = item["id"];
         data.inventory.items[id] = i;
     }
@@ -849,4 +852,122 @@ void GameData::LoadAll() {
     LoadCharacters(*this);
     LoadQuests(*this);
     LoadDailyTasks(*this);
+    LoadSave();
+}
+
+void GameData::SaveGame() const {
+    try {
+        json saveData;
+
+        json inventoryJson;
+        for (const auto& slot : inventory.slots) {
+            if (slot.first) {
+                inventoryJson[slot.first->id] = slot.second;
+            }
+        }
+        saveData["inventory"] = inventoryJson;
+
+        json questsJson = json::array();
+        for (const auto& quest : quests) {
+            json q;
+            q["id"] = quest.id;
+            q["progress"] = quest.progress;
+            q["complete"] = quest.complete;
+            q["locked"] = quest.locked;
+            q["rewardCollected"] = quest.rewardCollected;
+            questsJson.push_back(q);
+        }
+        saveData["quests"] = questsJson;
+
+        json dailyTasksJson = json::array();
+        for (const auto& task : dailyTasks) {
+            json t;
+            t["id"] = task.id;
+            t["progress"] = task.progress;
+            t["complete"] = task.complete;
+            dailyTasksJson.push_back(t);
+        }
+        saveData["dailyTasks"] = dailyTasksJson;
+
+        json playerJson;
+        playerJson["map"] = currentMap;
+        playerJson["position"]["x"] = playerPosition.x;
+        playerJson["position"]["y"] = playerPosition.y;
+        saveData["player"] = playerJson;
+
+        std::filesystem::create_directories("data/save");
+        std::ofstream file("data/save/savegame.json");
+        if (file.is_open()) {
+            file << saveData.dump(4);
+        }
+    } catch (...) {
+    }
+}
+
+void GameData::DeleteSave() {
+    std::filesystem::path savePath = "data/save/savegame.json";
+    if (std::filesystem::exists(savePath)) {
+        std::error_code ec;
+        std::filesystem::remove(savePath, ec);
+    }
+}
+
+void GameData::LoadSave() {
+    std::ifstream file("data/save/savegame.json");
+    if (!file.is_open()) return;
+
+    json j;
+    try {
+        file >> j;
+    } catch (...) {
+        return;
+    }
+
+    if (j.contains("inventory") && j["inventory"].is_object()) {
+        inventory.slots.clear();
+        for (auto it = j["inventory"].begin(); it != j["inventory"].end(); ++it) {
+            std::string itemId = it.key();
+            int quantity = it.value().get<int>();
+            auto itemIt = inventory.items.find(itemId);
+            if (itemIt != inventory.items.end()) {
+                inventory.slots[&itemIt->second] = quantity;
+            }
+        }
+    }
+
+    if (j.contains("quests") && j["quests"].is_array()) {
+        for (auto& savedQuest : j["quests"]) {
+            std::string id = savedQuest.value("id", "");
+            for (auto& quest : quests) {
+                if (quest.id == id) {
+                    quest.progress = savedQuest.value("progress", quest.progress);
+                    quest.complete = savedQuest.value("complete", quest.complete);
+                    quest.locked = savedQuest.value("locked", quest.locked);
+                    quest.rewardCollected = savedQuest.value("rewardCollected", quest.rewardCollected);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (j.contains("dailyTasks") && j["dailyTasks"].is_array()) {
+        for (auto& savedTask : j["dailyTasks"]) {
+            std::string id = savedTask.value("id", "");
+            for (auto& task : dailyTasks) {
+                if (task.id == id) {
+                    task.progress = savedTask.value("progress", task.progress);
+                    task.complete = savedTask.value("complete", task.complete);
+                    break;
+                }
+            }
+        }
+    }
+
+    if (j.contains("player") && j["player"].is_object()) {
+        currentMap = j["player"].value("map", currentMap);
+        if (j["player"].contains("position") && j["player"]["position"].is_object()) {
+            playerPosition.x = j["player"]["position"].value("x", playerPosition.x);
+            playerPosition.y = j["player"]["position"].value("y", playerPosition.y);
+        }
+    }
 }

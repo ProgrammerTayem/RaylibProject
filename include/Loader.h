@@ -73,3 +73,4 @@ struct TilemapData {
 void LoadTileMap(TilemapData& data, const std::string& tilemap, World& world, struct Resources& res);
 void LoadTilesets(TilemapData& data, const std::string& tilemap, struct Resources& res);
 TilemapData LoadFromFile(const std::string& tilemap, World& world, struct Resources& res);
+std::string ResolveDataPath(const std::string& relativePath);

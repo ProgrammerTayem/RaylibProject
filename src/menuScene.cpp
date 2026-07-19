@@ -3,6 +3,33 @@
 #include "gameData.h"
 #include "raylib.h"
 #include "raygui.h"
+#include "Loader.h"
+#include <fstream>
+
+static const char* SETTINGS_PATH = "data/system/settings.json";
+
+static void LoadGraphicsSettings(int& vsync, int& fpsIndex){
+    vsync = 0;
+    fpsIndex = 1;
+    std::ifstream file(ResolveDataPath(SETTINGS_PATH));
+    if(!file.is_open()) return;
+    try{
+        json j;
+        file >> j;
+        if(j.contains("vsync")) vsync = j["vsync"].get<int>() ? 1 : 0;
+        if(j.contains("fpsIndex")) fpsIndex = j["fpsIndex"].get<int>();
+    }
+    catch(...){}
+}
+
+static void SaveGraphicsSettings(int vsync, int fpsIndex){
+    json j = {
+        {"vsync", vsync ? 1 : 0},
+        {"fpsIndex", fpsIndex}
+    };
+    std::ofstream file(ResolveDataPath(SETTINGS_PATH));
+    if(file.is_open()) file << j.dump(4);
+}
 
 ParallaxBackground::ParallaxBackground(){
     scrollAmount.resize(layerCount);
@@ -47,11 +74,14 @@ int MenuScene::GuiSoundedButton(const Rectangle& bounds, const char* text){
 }
 
 MenuScene::MenuScene() : showOptions(false), opt(1), vsyncCheckboxValue(false), fpsValue(1), antiAliasingValue(0), cursorVisibilityValue(0), fpsDropdownEdit(false), antiAliasingDropdownEdit(false), fadeoutActive(false) {
-    buttonPressed.resize(buttons::KEYBINDINGS_CLOSE + 1, false);
-    windowBoxActive.resize(windowBox::CNFRM_EXIT + 1, false);
+    buttonPressed.resize(buttons::GRAPHICS_NO + 1, false);
+    windowBoxActive.resize(windowBox::CNFRM_GRAPHICS + 1, false);
     SliderBarValue.resize(sliderBar::SFX + 1, 0.0f);
     SliderBarValue = {100.0f, 75.0f, 75.0f};
     timer = 0.0f;
+    LoadGraphicsSettings(savedVsyncValue, savedFpsValue);
+    vsyncCheckboxValue = savedVsyncValue ? true : false;
+    fpsValue = savedFpsValue;
     buttonClickSound = gameData.res.GetSfx("button_click");
     menuMusic = gameData.res.GetMusic("menu_music");
     if(menuMusic) PlayMusicStream(*menuMusic);
@@ -70,7 +100,13 @@ Scene* MenuScene::Update(float dt){
     if(showKeybindings){
         if(buttonPressed[buttons::KEYBINDINGS_CLOSE] || IsKeyPressed(KEY_ESCAPE)) showKeybindings = false;
     }
-    if(buttonPressed[buttons::CONTINUE] || buttonPressed[buttons::NEW_YES]) fadeoutActive = true;
+    if(buttonPressed[buttons::CONTINUE]){
+        fadeoutActive = true;
+    }
+    else if(buttonPressed[buttons::NEW_YES]){
+        gameData.DeleteSave();
+        fadeoutActive = true;
+    }
     if(fadeoutActive){
         timer += dt;
         if(timer > 2.0f){
@@ -86,9 +122,13 @@ Scene* MenuScene::Update(float dt){
             windowBoxActive[windowBox::CNFRM_EXIT] = false;
         }
     }
-    if(windowBoxActive[windowBox::CNFRM_NEW_GAME]){
-        if(buttonPressed[buttons::NEW_NO]){
-            windowBoxActive[windowBox::CNFRM_NEW_GAME] = false;
+    if(windowBoxActive[windowBox::CNFRM_GRAPHICS]){
+        if(buttonPressed[buttons::GRAPHICS_YES]){
+            SaveGraphicsSettings(vsyncCheckboxValue, fpsValue);
+            return nullptr;
+        }
+        else if(buttonPressed[buttons::GRAPHICS_NO]){
+            windowBoxActive[windowBox::CNFRM_GRAPHICS] = false;
         }
     }
     if(buttonPressed[buttons::BACK]){
@@ -103,6 +143,13 @@ Scene* MenuScene::Update(float dt){
     if(buttonPressed[buttons::VOLUME_GRP]) opt = 1;
     else if(buttonPressed[buttons::GRAPHICS_GRP]) opt = 2;
     else if(buttonPressed[buttons::CONTROLS_GRP]) opt = 3;
+    if(buttonPressed[buttons::SAVE] && opt == 2){
+        bool fpsChanged = (fpsValue != savedFpsValue);
+        bool vsyncChanged = (vsyncCheckboxValue != (savedVsyncValue ? true : false));
+        if(fpsChanged || vsyncChanged){
+            windowBoxActive[windowBox::CNFRM_GRAPHICS] = true;
+        }
+    }
     return this;
 }
 
@@ -112,6 +159,10 @@ void MenuScene::Draw(){
     if(fadeoutActive) GuiLock();
     //ClearBackground(WHITE);
     GuiSetStyle(DEFAULT, TEXT_ALIGNMENT, TEXT_ALIGN_CENTER);
+    GuiSetStyle(DEFAULT, TEXT_SIZE, 120);
+    GuiSetStyle(DEFAULT, TEXT_COLOR_NORMAL, ColorToInt(DARKBROWN));
+    GuiLabel((Rectangle){ 0, 140, (float)GetScreenWidth(), 160 }, "Venture");
+    GuiSetStyle(DEFAULT, TEXT_COLOR_NORMAL, ColorToInt(RAYWHITE));
     GuiSetStyle(DEFAULT, TEXT_SIZE, 24);
     buttonPressed[buttons::CONTINUE] = GuiSoundedButton((Rectangle){ 248, 360, 232, 64 }, "CONTINUE");
     buttonPressed[buttons::NEW_GAME] = GuiSoundedButton((Rectangle){ 248, 456, 232, 64 }, "NEW GAME");
@@ -190,6 +241,19 @@ void MenuScene::Draw(){
             GuiUnlock();
             DrawKeybindingsOverlay();
         }
+    }
+    if(windowBoxActive[windowBox::CNFRM_GRAPHICS]){
+        if(showOptions){
+            GuiLock();
+            GuiWindowBox((Rectangle){ 824, 280, 456, 232 }, "CONFIRM");
+            GuiUnlock();
+        }
+        else{
+            windowBoxActive[windowBox::CNFRM_GRAPHICS] = !GuiWindowBox((Rectangle){ 824, 280, 456, 232 }, "CONFIRM");
+        }
+        GuiLabel((Rectangle){ 870, 340, 360, 60 }, "CHANGES REQUIRE RESTART\nEXIT TO APPLY?");
+        buttonPressed[buttons::GRAPHICS_YES] = GuiSoundedButton((Rectangle){ 864, 424, 144, 48 }, "YES");
+        buttonPressed[buttons::GRAPHICS_NO] = GuiSoundedButton((Rectangle){ 1096, 424, 152, 48 }, "NO");
     }
     if(fadeoutActive){
         GuiUnlock();

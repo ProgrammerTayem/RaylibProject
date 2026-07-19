@@ -181,8 +181,16 @@
             "id" : "crystal"
         },
         {
-            "path" : "assets/icon/gui_icon/new_quest.png",
+            "path" : "assets/tilesets/assets.png",
+            "id" : "assets_tileset"
+        },
+        {
+            "path": "assets/icon/gui_icon/new_quest.png",
             "id" : "new_quest"
+        },
+        {
+            "path" : "assets/sprites/bob/Human_Soldier_Sword_Shield_Idle-Sheet.png",
+            "id" : "npc_idle"
         }
     ],
 

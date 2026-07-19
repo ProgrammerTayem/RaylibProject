@@ -778,21 +778,26 @@ void Player::Draw() const{
     if(sprites[animIndex]) DrawTexturePro(*sprites[animIndex], source, dest, (Vector2){0, 0}, 0.0f, WHITE);
 }
 
+NPC::NPC(Resources &res) : curAnimation(0), spriteFrame(1){
+    position = { 0.0f, 0.0f };
+    dialogueActive = false;
+    canInteract = false;
+    dialogueIndex = 0;
+    animations.resize(ANIMS);
+    sprites.resize(SPRITES);
+    animations[AnimList::IDLE] = Animation(6, 1.0f);
+    sprites[AnimList::IDLE] = res.GetTexture("npc_idle");
+}
+
 NPC::NPC(){
     position = { 0.0f, 0.0f };
-    // name = "NPC";
-    // dialogueLines = {
-    //     "Hello there!",
-    //     "Nice weather we're having.",
-    //     "Have you seen any monsters around?"
-    // };
     dialogueActive = false;
     canInteract = false;
     dialogueIndex = 0;
 }
 
-NPC NPC::MakeNPC(std::string& name, Vector2 position, std::vector<std::string>& DialogueLines) {
-    NPC npc = NPC();
+NPC NPC::MakeNPC(Resources &res, std::string& name, Vector2 position, std::vector<std::string>& DialogueLines) {
+    NPC npc = NPC(res);
     npc.name = npc.id = name;
     npc.position = position;
     npc.dialogueLines = DialogueLines;
@@ -838,13 +843,34 @@ int InteractiveEntity::HandleInteraction(Vector2 playerPos, float dt){
 }
 
 void NPC::Update(float dt, Player& player){
+    if(curAnimation != -1) animations[curAnimation].step(dt);
     if(HandleInteraction(player.GetPosition(), dt)){
         gameData.QuestManager(EventType::TALK_TO_NPC, id);
     }
 }
 
 void NPC::Draw() const{
-    DrawCircleV(position, TILE_SIZE / 2 - 4, BLUE);
+    int animIndex = (curAnimation != -1) ? curAnimation : IDLE;
+    int frame = (curAnimation != -1) ? animations[curAnimation].curFrame() : (spriteFrame - 1);
+
+    const int frameWidth = 96;
+    const int frameHeight = 96;
+
+    Rectangle source = {
+        .x = (float)(frame * frameWidth),
+        .y = 0,
+        .width = (float)frameWidth,
+        .height = (float)frameHeight
+    };
+
+    Rectangle dest = {
+        .x = position.x,
+        .y = position.y,
+        .width = TILE_SIZE * 5,
+        .height = TILE_SIZE * 5
+    };
+
+    if(sprites[animIndex]) DrawTexturePro(*sprites[animIndex], source, dest, (Vector2){0, 0}, 0.0f, WHITE);
     //if(dialogueActive) typeWriter.Draw();
     if(canInteract && !dialogueActive){
         if(playerRelPosition == -1){
@@ -1139,12 +1165,8 @@ void Cam::Update(float dt, const Vector2& playerPos){
     }
 }
 
-GameScene::GameScene(Vector2 spawnPos) : world(gameData.res), player(gameData.res){
-    world.LoadFromTilemap("data/map/tilemap/tilemap.tmj", world);
-    Vector2 spawn = (spawnPos.x >= 0 && spawnPos.y >= 0) ? spawnPos : world.FindSpawnPosition();
-    player.SetPosition(spawn);
-    camera.SetMapSize(world.GetWidth(), world.GetHeight());
-    camera.SetTarget(spawn);
+GameScene::GameScene(Vector2 spawnPos, const std::string& mapPath) : world(gameData.res), player(gameData.res){
+    LoadMap(mapPath, spawnPos);
     background = gameData.res.GetMusic("game_background_music");
     if(background) PlayMusicStream(*background);
     background->looping = true;
@@ -1153,21 +1175,69 @@ GameScene::GameScene(Vector2 spawnPos) : world(gameData.res), player(gameData.re
 }
 
 GameScene::~GameScene(){
+    gameData.SaveGame();
     delete gui;
+}
+
+void GameScene::LoadMap(const std::string& mapPath, Vector2 spawnPos){
+    world.LoadFromTilemap(mapPath, world);
+    currentMap = mapPath;
+    gameData.currentMap = mapPath;
+    Vector2 spawn = (spawnPos.x >= 0 && spawnPos.y >= 0) ? spawnPos : world.FindSpawnPosition();
+    player.SetPosition(spawn);
+    camera.SetMapSize(world.GetWidth(), world.GetHeight());
+    camera.SetTarget(spawn);
+    transitionProtection = 0.5f;
 }
 
 Scene* GameScene::Update(float dt){
     if(background) UpdateMusicStream(*background);
-    // if(IsKeyPressed(KEY_K)) showCollisionDebug = !showCollisionDebug;
     if(gameData.fighting) {
         gameData.preBattleSpawnPosition = player.GetPosition();
         return new BattleScene();
     }
-    if(!gui->blockProgress){
-        world.Update(dt, player);
-        player.Update(dt, world);
-        camera.Update(dt, player.GetPosition());
+
+    if(transitionProtection > 0.0f) {
+        transitionProtection -= dt;
     }
+
+    if(transitioning) {
+        if(fadeOut) {
+            fadeAlpha += dt * 3.0f;
+            if(fadeAlpha >= 1.0f) {
+                fadeAlpha = 1.0f;
+                world.LoadFromTilemap(pendingMap, world);
+                currentMap = pendingMap;
+                gameData.currentMap = pendingMap;
+                if(pendingSpawn.x >= 0 && pendingSpawn.y >= 0) {
+                    player.SetPosition(pendingSpawn);
+                } else {
+                    player.SetPosition(world.FindSpawnPosition());
+                }
+                camera.SetMapSize(world.GetWidth(), world.GetHeight());
+                camera.SetTarget(player.GetPosition());
+                transitionProtection = 0.5f;
+                fadeOut = false;
+            }
+        } else {
+            fadeAlpha -= dt * 3.0f;
+            if(fadeAlpha <= 0.0f) {
+                fadeAlpha = 0.0f;
+                transitioning = false;
+            }
+        }
+    } else {
+        if(!gui->blockProgress){
+            world.Update(dt, player);
+            player.Update(dt, world);
+            gameData.playerPosition = player.GetPosition();
+            camera.Update(dt, player.GetPosition());
+            if(transitionProtection <= 0.0f) {
+                CheckTriggers();
+            }
+        }
+    }
+
     GUI* next;
     next = gui->Update(dt);
     if(next != gui){
@@ -1195,5 +1265,42 @@ void GameScene::Draw(){
     // if(showCollisionDebug){
     //     DrawText("Collision Debug [F12]", 10, 10, 20, LIME);
     // }
+
+    if(transitioning && fadeAlpha > 0.0f) {
+        DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, fadeAlpha));
+    }
+}
+
+void GameScene::CheckTriggers(){
+    Vector2 playerPos = player.GetPosition();
+    for (const auto& trigger : world.GetTriggerRects()) {
+        Vector2 triggerPos = {trigger.bounds.x, trigger.bounds.y};
+        if (IsInInteractionRange(playerPos, triggerPos)) {
+            if (trigger.name == "Next_map" && IsKeyPressed(KEY_F)) {
+                StartMapTransition();
+                break;
+            }
+            if (trigger.name == "Spawn" && IsKeyPressed(KEY_F)) {
+                StartMapTransition("data/map/tilemap/tilemap.tmj", {-1, -1});
+                break;
+            }
+        }
+    }
+}
+
+void GameScene::StartMapTransition(){
+    if(currentMap == "data/map/tilemap/tilemap.tmj") {
+        StartMapTransition("data/map/tilemap/untitled.tmj", {86.0f, 363.0f});
+    } else {
+        StartMapTransition("data/map/tilemap/tilemap.tmj", {-1, -1});
+    }
+}
+
+void GameScene::StartMapTransition(const std::string& targetMap, Vector2 spawnPos){
+    transitioning = true;
+    fadeOut = true;
+    fadeAlpha = 0.0f;
+    pendingMap = targetMap;
+    pendingSpawn = spawnPos;
 }
 
